@@ -1,0 +1,30 @@
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Secrets
+*.pem
+*.key
+*.crt
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.backup
+*.sql
+*.dump
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker local
+docker-data/
+volumes/

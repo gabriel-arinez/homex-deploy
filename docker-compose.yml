@@ -1,5 +1,28 @@
 name: ${COMPOSE_PROJECT_NAME:-homex}
 
+x-backend-environment: &backend-environment
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+  DJANGO_SETTINGS_MODULE: config.settings.integration
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+  CELERY_BROKER_URL: redis://redis:6379/0
+  HOMEX_AUDIO_TEMP_ROOT: /var/lib/homex/audio-temporal
+  HOMEX_AUDIO_MAX_BYTES: ${HOMEX_AUDIO_MAX_BYTES:-25000000}
+  HOMEX_AUDIO_TTL_SECONDS: ${HOMEX_AUDIO_TTL_SECONDS:-3600}
+  HOMEX_OUTBOX_RECONCILE_SECONDS: ${HOMEX_OUTBOX_RECONCILE_SECONDS:-3600}
+  HOMEX_ASR_MODEL_PATH: /opt/homex/models/faster-whisper-small
+  HOMEX_ASR_DEVICE: ${HOMEX_ASR_DEVICE:-cpu}
+  HOMEX_ASR_COMPUTE_TYPE: ${HOMEX_ASR_COMPUTE_TYPE:-int8}
+
+x-backend-image: &backend-image
+  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d01-9fac22e}
+  build:
+    context: .
+    dockerfile: docker/backend.Dockerfile
+    additional_contexts:
+      backend: ${BACKEND_CONTEXT:-../homex-backend}
+
 services:
   postgres:
     image: postgres:17.6-alpine3.22
@@ -7,15 +30,20 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      HOMEX_DB_MIGRATOR_USER: ${HOMEX_DB_MIGRATOR_USER:?HOMEX_DB_MIGRATOR_USER is required}
+      HOMEX_DB_MIGRATOR_PASSWORD: ${HOMEX_DB_MIGRATOR_PASSWORD:?HOMEX_DB_MIGRATOR_PASSWORD is required}
+      HOMEX_DB_RUNTIME_USER: ${HOMEX_DB_RUNTIME_USER:?HOMEX_DB_RUNTIME_USER is required}
+      HOMEX_DB_RUNTIME_PASSWORD: ${HOMEX_DB_RUNTIME_PASSWORD:?HOMEX_DB_RUNTIME_PASSWORD is required}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init/00-roles.sh:/docker-entrypoint-initdb.d/00-roles.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
       start_period: 10s
     restart: unless-stopped
     networks: [data]
@@ -29,13 +57,138 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
     restart: unless-stopped
     networks: [data]
 
+  backend:
+    <<: *backend-image
+    profiles: [build]
+    command: ["python", "--version"]
+
+  migrate:
+    <<: *backend-image
+    environment:
+      <<: *backend-environment
+      DATABASE_URL: ${HOMEX_MIGRATOR_DATABASE_URL:?HOMEX_MIGRATOR_DATABASE_URL is required}
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [data]
+
+  grant-runtime:
+    <<: *backend-image
+    environment:
+      DATABASE_URL: ${HOMEX_MIGRATOR_DATABASE_URL:?HOMEX_MIGRATOR_DATABASE_URL is required}
+      HOMEX_DB_MIGRATOR_USER: ${HOMEX_DB_MIGRATOR_USER:?HOMEX_DB_MIGRATOR_USER is required}
+      HOMEX_DB_RUNTIME_USER: ${HOMEX_DB_RUNTIME_USER:?HOMEX_DB_RUNTIME_USER is required}
+    command: ["python", "/opt/homex-deploy/apply_runtime_privileges.py"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks: [data]
+
+  api:
+    <<: *backend-image
+    environment: *backend-environment
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - audio_temporal:/var/lib/homex/audio-temporal
+      - ./releases/manifest.yaml:/release/manifest.yaml:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=2).read()
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [app, data]
+
+  worker:
+    <<: *backend-image
+    hostname: homex-worker
+    environment: *backend-environment
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--hostname=worker@%h"]
+    volumes:
+      - audio_temporal:/var/lib/homex/audio-temporal
+      - type: bind
+        source: ${ASR_MODEL_SOURCE:?ASR_MODEL_SOURCE is required}
+        target: /opt/homex/models/faster-whisper-small
+        read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d worker@homex-worker --timeout 5 | grep -q pong"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [data]
+
+  publisher:
+    <<: *backend-image
+    profiles: [operations]
+    environment: *backend-environment
+    command: ["python", "manage.py", "publicar_outbox_capturas"]
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: "no"
+    networks: [data]
+
+  reconciler:
+    <<: *backend-image
+    profiles: [operations]
+    environment: *backend-environment
+    command: ["python", "manage.py", "reconciliar_outbox_capturas"]
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: "no"
+    networks: [data]
+
+  cleanup:
+    <<: *backend-image
+    profiles: [operations]
+    environment: *backend-environment
+    command: ["python", "manage.py", "limpiar_audio_temporal"]
+    volumes:
+      - audio_temporal:/var/lib/homex/audio-temporal
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+    restart: "no"
+    networks: [data]
+
 networks:
+  app:
   data:
     internal: true
 
 volumes:
   postgres_data:
+  audio_temporal:

@@ -1,0 +1,4 @@
+**
+!scripts/
+!scripts/apply_runtime_privileges.py
+!scripts/verify_expected_migrations.py

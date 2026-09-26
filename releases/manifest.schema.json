@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homex.local/schemas/release-manifest-v1.json",
+  "title": "HOMEX release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release", "sources", "runtime"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "created_at", "status"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "status": { "enum": ["baseline", "candidate", "released", "superseded"] }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "frontend", "nlp"],
+      "properties": {
+        "backend": { "$ref": "#/$defs/source" },
+        "frontend": { "$ref": "#/$defs/source" },
+        "nlp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository", "revision", "package_version", "artifact", "sha256"],
+          "properties": {
+            "repository": { "type": "string", "minLength": 1 },
+            "revision": { "$ref": "#/$defs/sha" },
+            "package_version": { "type": "string", "minLength": 1 },
+            "artifact": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asr_model", "images", "postgresql", "redis", "expected_migration"],
+      "properties": {
+        "asr_model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "sha256"],
+          "properties": {
+            "version": { "type": "string", "minLength": 1 },
+            "sha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "pending-d01" }] }
+          }
+        },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["api", "worker", "frontend_proxy"],
+          "properties": {
+            "api": { "$ref": "#/$defs/image" },
+            "worker": { "$ref": "#/$defs/image" },
+            "frontend_proxy": { "$ref": "#/$defs/image" }
+          }
+        },
+        "postgresql": { "type": "string", "minLength": 1 },
+        "redis": { "type": "string", "minLength": 1 },
+        "expected_migration": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "image": {
+      "type": "string",
+      "pattern": "^(pending-d0[12]|[^:]+:[^:]+(@sha256:[0-9a-f]{64})?)$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "revision": { "$ref": "#/$defs/sha" }
+      }
+    }
+  }
+}

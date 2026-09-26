@@ -1,0 +1,29 @@
+schema_version: "1.0"
+release:
+  version: "0.0.0-d00"
+  created_at: "2026-09-25T00:00:00-04:00"
+  status: baseline
+sources:
+  backend:
+    repository: gabriel-arinez/homex-backend
+    revision: adb949268277da4361f37c96b786c5cdd0265750
+  frontend:
+    repository: gabriel-arinez/homex-frontend
+    revision: db969c00b06fbdc22bd30937f40ebf8d0a045505
+  nlp:
+    repository: gabriel-arinez/homex-nlp
+    revision: b5fe2921320c9031f6d44dc5c91a18411daa393e
+    package_version: 0.1.0
+    artifact: homex_nlp-0.1.0-py3-none-any.whl
+    sha256: cfacc3a987f6158f43934cb64304fa50ea3e577cfa576f3db1e6d2a9576d19e6
+runtime:
+  asr_model:
+    version: pending-d01
+    sha256: pending-d01
+  images:
+    api: pending-d01
+    worker: pending-d01
+    frontend_proxy: pending-d02
+  postgresql: 17.6-alpine3.22
+  redis: 8.2.1-alpine3.22
+  expected_migration: backend-adb949268277da4361f37c96b786c5cdd0265750

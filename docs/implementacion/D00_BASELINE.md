@@ -3,7 +3,7 @@
 **Fecha:** 26 de septiembre de 2026  
 **Rama:** `feat/d00-baseline`  
 **Commit base deploy:** `a6b4b27` (`docs: add HOMEX deploy master plan`)  
-**Estado:** correcciones de auditoría aplicadas; cierre condicionado al CI remoto del commit correctivo.
+**Estado:** **D00 cerrada y verificada con CI remoto verde.**
 
 ## Precondiciones verificadas
 
@@ -116,10 +116,14 @@ El primer commit de D00 (`6aa447f037ce52f0c668d5b288af8bccd25c0d47`) ejecutó Gi
 - `secrets`.
 
 Ese resultado confirmó el baseline inicial, pero la auditoría posterior detectó revisiones fuente
-obsoletas y dos debilidades del contrato de release; por ello D00 no se declara cerrada hasta que
-el commit correctivo ejecute nuevamente todos los gates.
+obsoletas y dos debilidades del contrato de release. Se corrigieron en
+`143ceb75ebcbf3713f938f28b5ec919b938ddbe3`.
 
-Gates del commit correctivo:
+GitHub Actions `36223171713` ejecutó el commit correctivo y terminó con **4/4 jobs verdes**.
+En particular, `release-contract` validó el manifiesto actual y ejecutó
+`scripts/test_release_manifest_schema.py` con resultado `release-contract-tests-ok`.
+
+Gates finales de D00:
 
 | Gate | Resultado exigido |
 | --- | --- |
@@ -129,7 +133,7 @@ Gates del commit correctivo:
 | manifest actual contra JSON Schema | verde |
 | pruebas de estados del manifest | `release-contract-tests-ok` |
 | Gitleaks | verde |
-| CI remoto | 4/4 verde |
+| CI remoto | **4/4 verde** — Actions `36223171713` |
 
 ## Riesgos y bloqueos para D01
 
@@ -154,6 +158,13 @@ docker compose --env-file .env down
 
 ## Cierre
 
-El commit funcional inicial de D00 es
-`6aa447f037ce52f0c668d5b288af8bccd25c0d47`. El commit correctivo y su CI se registrarán en el
-cierre documental después de observar todos los jobs verdes.
+- commit funcional inicial: `6aa447f037ce52f0c668d5b288af8bccd25c0d47`;
+- commit correctivo: `143ceb75ebcbf3713f938f28b5ec919b938ddbe3`;
+- CI correctivo: `36223171713`, **4/4 jobs verdes**;
+- `compose-config`: verde;
+- `yaml`: verde;
+- `release-contract`: verde, incluidas pruebas negativas;
+- `secrets`: verde.
+
+No quedan bloqueos de D00. Los faltantes documentados corresponden a D01 o a sus repositorios
+propietarios. **D00 queda formalmente cerrada y lista para fusionarse a `main`.**

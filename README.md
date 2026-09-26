@@ -5,9 +5,9 @@ contiene reglas comerciales, lógica NLP ni componentes Vue de dominio.
 
 ## Estado
 
-La fase **D00 — baseline de infraestructura** está en desarrollo. El Compose actual levanta
-únicamente PostgreSQL y Redis con versiones fijadas; las imágenes de aplicación comienzan en
-D01 y el frontend/proxy en D02.
+La fase **D00 — baseline de infraestructura** está cerrada y verificada con CI remoto verde.
+El Compose actual levanta únicamente PostgreSQL y Redis con versiones fijadas; las imágenes de
+aplicación corresponden a **D01** y el frontend/proxy a **D02**.
 
 ## Validación local
 

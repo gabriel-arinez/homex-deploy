@@ -3,7 +3,7 @@
 **Fecha:** 26 de septiembre de 2026  
 **Rama:** `feat/d01-core-runtime`  
 **Commit base:** `d1b4070` (merge D00 a `main`)  
-**Estado:** implementación y gates locales completos; CI remoto pendiente del commit/push.
+**Estado:** **D01 cerrada; implementación local y CI remoto completos.**
 
 ## Precondiciones
 
@@ -21,7 +21,8 @@
 - publisher, reconciler y cleanup como jobs independientes;
 - temporal privado compartido y modelo ASR read-only;
 - verificación del mapa real de migraciones;
-- gate integral aislado y CI progresivo con jobs `build` e `integration`.
+- gate integral aislado;
+- CI con jobs independientes de config, YAML, release, build, integración y secretos.
 
 ## Artefactos
 
@@ -50,7 +51,7 @@
 | persistencia PostgreSQL | `postgres-persistence-ok` tras stop/start |
 | Redis caído | `postgres-outbox-survives-redis-outage-ok` |
 | recuperación Redis | `publicados=1 errores=0` |
-| cleanup sin worker | `eliminados=0`, comando exitoso con worker detenido |
+| cleanup sin worker | comando exitoso con worker detenido |
 | datos | PostgreSQL accepting connections; Redis `PONG` |
 | gate final | `d01-runtime-ok` |
 
@@ -58,7 +59,23 @@ El gate se ejecutó bajo `homex-d01-gate` y eliminó exclusivamente sus contened
 volúmenes efímeros. Durante el primer intento el host agotó disco por caché BuildKit; se eliminó
 sólo caché regenerable, no imágenes etiquetadas ni volúmenes ajenos.
 
-## Riesgos y límites
+## CI remoto
+
+El commit funcional `41505654053b3fb04625177d5b771b4a581dff8f` ejecutó GitHub Actions
+`36226702767` con **6/6 jobs verdes**:
+
+- `compose-config` — Compose y contrato de 34 variables;
+- `yaml` — manifiesto, Compose y workflow;
+- `release-contract` — schema y pruebas positivas/negativas;
+- `build` — imagen común construida sin caché desde backend fijado;
+- `integration` — `d01-runtime-ok`, incluido PostgreSQL/Redis/worker reales;
+- `secrets` — Gitleaks verde.
+
+Los avisos del runner sobre migración futura de `ubuntu-latest` y Node 20 en actions no afectan
+los gates ni el runtime; deberán atenderse como mantenimiento de CI antes de la fecha indicada por
+GitHub.
+
+## Riesgos y límites transferidos a D02
 
 1. D01 usa el servidor Django real sólo para integración local. D02 requiere que backend fije un
    servidor WSGI/ASGI productivo.
@@ -79,4 +96,10 @@ sh scripts/test_d01_runtime.sh
 
 ## Cierre
 
-Pendiente de registrar commit final y CI remoto verde.
+- commit funcional: `41505654053b3fb04625177d5b771b4a581dff8f`;
+- CI funcional: `36226702767`, **6/6 verde**;
+- gate local final: `d01-runtime-ok`;
+- no quedan bloqueos dentro del alcance D01.
+
+Los dos cambios propietarios pendientes —servidor productivo y readiness— pertenecen al inicio
+de D02 y no se ocultaron con comandos o endpoints ficticios. **D01 queda formalmente cerrada.**

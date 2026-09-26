@@ -3,7 +3,7 @@
 **Fecha:** 26 de septiembre de 2026  
 **Rama:** `feat/d01-core-runtime`  
 **Commit base:** `d1b4070` (merge D00 a `main`)  
-**Estado:** **D01 cerrada; implementación local y CI remoto completos.**
+**Estado:** **D01 cerrada y verificada con CI remoto verde.**
 
 ## Precondiciones
 
@@ -99,16 +99,33 @@ POSTGRES_USER=postgres POSTGRES_DB=homex \
 sh scripts/test_d01_runtime.sh
 ```
 
+## Corrección final y CI
+
+El commit correctivo `c3f3fe840ca3378f366bddf75c3dcd8a70755a1f` cerró los hallazgos de
+auditoría y ejecutó GitHub Actions `36228137401` con **7/7 jobs verdes**:
+
+- `compose-config` — Compose y contrato de variables;
+- `yaml` — manifiesto, Compose y workflow;
+- `release-contract` — schema y pruebas positivas/negativas;
+- `asr-contract` — snapshot ASR fijado y `oid sha256` LFS verificado remotamente;
+- `build` — imagen común API/worker construida sin caché desde backend fijado;
+- `integration` — gate `d01-runtime-ok` con PostgreSQL, Redis y worker reales;
+- `secrets` — Gitleaks verde.
+
+El gate de integración espera explícitamente la recuperación de PostgreSQL, Redis y worker después
+de cada restart y rechaza namespaces Compose que no empiecen por `homex-d01-`.
+
 ## Cierre
 
-El cierre definitivo queda condicionado al CI del commit correctivo que incorpora:
-
-- verificación remota del puntero LFS del modelo ASR fijado;
-- manifest baseline sin digest local engañoso;
-- esperas explícitas de PostgreSQL, Redis y worker después de restart;
-- protección del namespace Compose de pruebas.
-
-Una vez esos gates estén verdes, se registrará aquí el commit/CI final.
+- commit funcional inicial: `41505654053b3fb04625177d5b771b4a581dff8f`;
+- commit de evidencia inicial: `8e6a8b4396390a68e1892c8b2ffc3870e9268444`;
+- commit correctivo: `c3f3fe840ca3378f366bddf75c3dcd8a70755a1f`;
+- CI correctivo: `36228137401`, **7/7 verde**;
+- modelo ASR fijado por snapshot y SHA-256 con verificación remota;
+- imagen baseline API/worker fijada por tag común; digest obligatorio al promover a candidate;
+- gate integral final: `d01-runtime-ok`;
+- no quedan bloqueos dentro del alcance D01.
 
 Los dos cambios propietarios pendientes —servidor productivo y readiness— pertenecen al inicio
-de D02 y no se ocultan con comandos o endpoints ficticios.
+de D02 y no se ocultaron con comandos o endpoints ficticios. **D01 queda formalmente cerrada y
+lista para fusionarse a `main`.**

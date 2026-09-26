@@ -6,7 +6,7 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 ## Estado
 
 - D00 — baseline y contrato: cerrada.
-- D01 — runtime integrado backend + NLP: en cierre correctivo en `feat/d01-core-runtime`.
+- D01 — runtime integrado backend + NLP: cerrada y verificada con CI remoto verde.
 - D02+ — pendientes según `docs/PLAN_MAESTRO.md`.
 
 ## Runtime D01

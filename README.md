@@ -1,39 +1,58 @@
 # HOMEX Deploy
 
-Infraestructura versionada para ensamblar, verificar y operar HOMEX. Este repositorio no
-contiene reglas comerciales, lógica NLP ni componentes Vue de dominio.
+Infraestructura versionada para ensamblar, verificar y operar HOMEX. No contiene reglas
+comerciales, lógica NLP ni componentes Vue de dominio.
 
 ## Estado
 
-La fase **D00 — baseline de infraestructura** está cerrada y verificada con CI remoto verde.
-El Compose actual levanta únicamente PostgreSQL y Redis con versiones fijadas; las imágenes de
-aplicación corresponden a **D01** y el frontend/proxy a **D02**.
+- D00 — baseline y contrato: cerrada.
+- D01 — runtime integrado backend + NLP: implementada en `feat/d01-core-runtime`.
+- D02+ — pendientes según `docs/PLAN_MAESTRO.md`.
 
-## Validación local
+## Runtime D01
+
+D01 ejecuta PostgreSQL, Redis, migración one-shot, aplicación de privilegios, API Django,
+worker Celery y jobs operativos de publicación, reconciliación y limpieza. API y worker comparten
+la misma imagen; el wheel NLP y el modelo ASR están fijados por versión/hash.
 
 ```bash
 cp .env.example .env
-docker compose config --quiet
-docker compose up -d postgres redis
-docker compose ps
+# Editar contraseñas y ASR_MODEL_SOURCE antes de continuar.
+docker compose --env-file .env build backend
+docker compose --env-file .env up -d postgres redis
+docker compose --env-file .env run --rm migrate
+docker compose --env-file .env run --rm grant-runtime
+docker compose --env-file .env up -d api worker
 ```
 
-Los valores de `.env.example` son marcadores locales, no secretos productivos. Antes de usar el
-entorno se debe cambiar `POSTGRES_PASSWORD`, mantener sincronizado `DATABASE_URL` y sustituir
-cualquier credencial marcada con `replace-with-...`.
+Jobs independientes:
+
+```bash
+docker compose --env-file .env run --rm publisher
+docker compose --env-file .env run --rm reconciler
+docker compose --env-file .env run --rm cleanup
+```
+
+Gate integral aislado:
+
+```bash
+ASR_MODEL_SOURCE=/ruta/absoluta/faster-whisper-small \
+POSTGRES_USER=postgres POSTGRES_DB=homex \
+sh scripts/test_d01_runtime.sh
+```
+
+El gate usa el proyecto Compose exclusivo `homex-d01-gate` y elimina sólo sus recursos
+efímeros. Producción no debe usar los marcadores de `.env.example`.
 
 ## Estructura
 
 ```text
-.github/workflows/ci.yml       CI de configuración y contratos
-docker-compose.yml             baseline local, no producción
-docs/ARQUITECTURA_DEPLOY.md    topología, fronteras y contratos auditados
-docs/implementacion/           evidencia de cierre por fase
-nginx/                         reservado para D02
-releases/manifest.yaml         componentes exactos de la release
-releases/manifest.schema.json  contrato verificable del manifiesto
-scripts/                       validadores y operación versionada
+.github/workflows/ci.yml       config, build, integración y secretos
+docker/backend.Dockerfile      imagen común API/worker
+docker/postgres/init/          bootstrap de roles PostgreSQL
+docker-compose.yml             runtime integrado D01
+docs/ARQUITECTURA_DEPLOY.md    arquitectura y fronteras
+docs/implementacion/           evidencia por fase
+releases/manifest.yaml         componentes exactos
+scripts/                       gates y operación
 ```
-
-El orden rector, los gates y las prohibiciones están en
-[`docs/PLAN_MAESTRO.md`](docs/PLAN_MAESTRO.md).

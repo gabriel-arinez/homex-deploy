@@ -12,10 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Compose interpolation and model
-        run: docker compose --env-file .env.example config --quiet
-      - name: Validate environment contract
-        run: python3 scripts/validate_env_contract.py
+      - run: docker compose --env-file .env.example config --quiet
+      - run: python3 scripts/validate_env_contract.py
 
   yaml:
     runs-on: ubuntu-latest
@@ -35,10 +33,42 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install check-jsonschema==0.35.0 jsonschema==4.25.1
-      - name: Validate release manifest
-        run: check-jsonschema --schemafile releases/manifest.schema.json releases/manifest.yaml
-      - name: Test release-state invariants
-        run: python3 scripts/test_release_manifest_schema.py
+      - run: check-jsonschema --schemafile releases/manifest.schema.json releases/manifest.yaml
+      - run: python3 scripts/test_release_manifest_schema.py
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 9fac22ecc4f471237e6611b5a226532ab2a037ab
+          path: sources/backend
+      - name: Build common API/worker image without cache
+        env:
+          BACKEND_CONTEXT: ./sources/backend
+        run: docker compose --env-file .env.example build --no-cache backend
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 9fac22ecc4f471237e6611b5a226532ab2a037ab
+          path: sources/backend
+      - name: Prepare read-only ASR mount fixture
+        run: mkdir -p /tmp/homex-asr-model && touch /tmp/homex-asr-model/model.bin
+      - name: Run D01 integration and resilience gates
+        env:
+          ASR_MODEL_SOURCE: /tmp/homex-asr-model
+          BACKEND_CONTEXT: ./sources/backend
+          POSTGRES_USER: postgres
+          POSTGRES_DB: homex
+          D01_COMPOSE_PROJECT: homex-d01-ci
+        run: sh scripts/test_d01_runtime.sh
 
   secrets:
     runs-on: ubuntu-latest

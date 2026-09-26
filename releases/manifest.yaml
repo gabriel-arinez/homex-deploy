@@ -6,10 +6,10 @@ release:
 sources:
   backend:
     repository: gabriel-arinez/homex-backend
-    revision: adb949268277da4361f37c96b786c5cdd0265750
+    revision: 9fac22ecc4f471237e6611b5a226532ab2a037ab
   frontend:
     repository: gabriel-arinez/homex-frontend
-    revision: db969c00b06fbdc22bd30937f40ebf8d0a045505
+    revision: 9374c2f73b5496dc79fd70dbb250ac4f645f8ec5
   nlp:
     repository: gabriel-arinez/homex-nlp
     revision: b5fe2921320c9031f6d44dc5c91a18411daa393e
@@ -26,4 +26,15 @@ runtime:
     frontend_proxy: pending-d02
   postgresql: 17.6-alpine3.22
   redis: 8.2.1-alpine3.22
-  expected_migration: backend-adb949268277da4361f37c96b786c5cdd0265750
+  expected_migrations:
+    accounts: 0001_initial
+    capturas: 0007_cierre_hitl_f083
+    catalogo: 0007_media_dimensiones_f077
+    clientes: 0001_initial
+    documentos: 0005_integridad_adjunto_f077
+    movimientos_stock: 0003_carga_inicial_unica_f075
+    notas_entrega: 0001_initial
+    ordenes_trabajo: 0001_initial
+    pedidos: 0001_initial
+    proformas: 0004_cierre_reglas_f072
+    recibos: 0003_cierre_reglas_f074

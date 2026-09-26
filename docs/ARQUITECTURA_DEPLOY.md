@@ -1,4 +1,4 @@
-# Arquitectura de despliegue HOMEX
+| frontend | `9374c2f73b5496dc79fd70dbb250ac4f645f8ec5` (`main`) | FE02 | satisfecha; FE04 ya fusionada || backend | `9fac22ecc4f471237e6611b5a226532ab2a037ab` | F08.4 | satisfecha; `main` además contiene contrato FE04 |# Arquitectura de despliegue HOMEX
 
 ## Alcance
 
@@ -35,8 +35,12 @@ Git dentro de contenedores.
 | frontend | `db969c00b06fbdc22bd30937f40ebf8d0a045505` (`main`) | FE02 | satisfecha |
 | NLP | `b5fe2921320c9031f6d44dc5c91a18411daa393e` | F06 | satisfecha |
 
-El frontend tenía una rama FE03 activa al auditar; D00 sólo usa `main`, como exige la
-precondición. Las revisiones no son referencias flotantes y se registran en el manifiesto.
+La reauditación del 26 de septiembre de 2026 usa los `main` vigentes. El frontend ya superó
+la precondición mínima FE02 y tiene FE04 fusionada; el backend conserva F08.4 cerrado y además
+incorpora los contratos requeridos por FE03/FE04. Los cambios posteriores a la auditoría inicial
+no alteraron los nombres de variables utilizados por deploy, los comandos de worker/outbox ni la
+ausencia de un servidor WSGI/ASGI productivo fijado. Las revisiones registradas no son referencias
+flotantes.
 
 ## Procesos y comandos reales
 
@@ -88,8 +92,9 @@ probarse en `homex-backend` antes de declararlo en D01.
 
 ## Contrato de configuración
 
-`.env.example` conserva exactamente los nombres consumidos por backend y frontend, además de
-variables propias de Compose para PostgreSQL/Redis. Se eliminaron `BACKEND_PORT`,
+`.env.example` conserva los nombres consumidos por backend y frontend y añade únicamente
+variables propias de orquestación (`COMPOSE_PROJECT_NAME`, `POSTGRES_*`, `REDIS_PORT`) y
+`DJANGO_SETTINGS_MODULE` para seleccionar explícitamente los settings de producción. Se eliminaron `BACKEND_PORT`,
 `FRONTEND_PORT`, `NLP_PORT` y `APP_ENV`: no pertenecían a ningún contrato fuente.
 
 Las variables NLP generales de su `.env.example` no se duplican: la integración vigente del
@@ -112,9 +117,15 @@ sin hacer que el runtime sea propietario del esquema.
 ## Manifiesto de release
 
 `releases/manifest.yaml` registra revisiones exactas, hash del wheel NLP y versiones de datos.
-Los campos `pending-d01`/`pending-d02` sólo son válidos mientras el estado sea `baseline`; una
-release candidata debe reemplazarlos por imagen/tag/digest y modelo ASR reales. El contrato se
-valida contra `releases/manifest.schema.json`.
+Los campos `pending-d01`/`pending-d02` sólo son válidos mientras el estado sea `baseline`.
+El JSON Schema aplica esta regla: `candidate`, `released` y `superseded` requieren modelo ASR
+con SHA-256 real e imágenes inmutables `tag@sha256:digest`. El contrato se valida contra
+`releases/manifest.schema.json` y además tiene pruebas negativas que impiden relajar esa
+invariante.
+
+El estado esperado de Django no se representa con un SHA Git. `runtime.expected_migrations`
+registra las migraciones hoja por app y D01 deberá compararlas con `showmigrations`/la base real
+antes de arrancar los procesos de aplicación.
 
 ## Faltantes en repositorios propietarios
 
@@ -124,6 +135,6 @@ valida contra `releases/manifest.schema.json`.
 | backend | readiness real de DB/Redis/migraciones según decisión de aplicación | gate D01/D02 |
 | deploy + backend | bootstrap migrador/runtime con roles separados | runtime D01 |
 | deploy | versión/hash y entrega offline del modelo ASR | worker D01 |
-| frontend | build desde `main` integrado cuando cierre FE03+ | release candidata D04 |
+| frontend | continuar integrando el build de `main` hasta FE08 | release candidata D04 |
 
 Estos faltantes no se solucionan con endpoints ficticios, sleeps ni comandos inventados.

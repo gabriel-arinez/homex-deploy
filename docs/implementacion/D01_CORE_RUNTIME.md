@@ -27,7 +27,7 @@
 ## Artefactos
 
 - imagen: `homex/backend:d01-9fac22e`;
-- digest local: `sha256:ea2fd64aca79858a3a8185c2629fcb63f7f158cb63a6d4a582177a95836d3b4f`;
+- tag baseline común API/worker: `homex/backend:d01-9fac22e`; el digest de registry se fijará al promover una candidate;
 - wheel NLP 0.1.0: `cfacc3a987f6158f43934cb64304fa50ea3e577cfa576f3db1e6d2a9576d19e6`;
 - modelo ASR: snapshot `536b0662742c02347bc0e980a01041f333bce120`;
 - `model.bin`: `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671`.
@@ -39,7 +39,7 @@
 | Compose config | correcto con Compose v5.5.0 |
 | contrato env | `env-contract-ok: 34 variables únicas` |
 | release schema | `release-contract-tests-ok` |
-| modelo ASR | `asr-model-ok` con hash exacto |
+| contrato ASR | snapshot y `oid sha256` LFS fijados; verificación CI remota añadida |
 | build sin caché | imagen común construida desde lock |
 | base vacía → migrate | todas las migraciones `OK` |
 | segunda migrate | `No migrations to apply.` |
@@ -47,7 +47,7 @@
 | migraciones hoja | `expected-migrations-ok: 11 apps HOMEX` |
 | API + worker + NLP | `f084-real-ok` |
 | temporal | modo `0700` |
-| ASR | bind mount read-only; escritura rechazada por filesystem |
+| ASR | bind mount read-only; escritura rechazada; provisión local real verificable por hash completo |
 | persistencia PostgreSQL | `postgres-persistence-ok` tras stop/start |
 | Redis caído | `postgres-outbox-survives-redis-outage-ok` |
 | recuperación Redis | `publicados=1 errores=0` |
@@ -61,8 +61,13 @@ sólo caché regenerable, no imágenes etiquetadas ni volúmenes ajenos.
 
 ## CI remoto
 
-El commit funcional `41505654053b3fb04625177d5b771b4a581dff8f` ejecutó GitHub Actions
-`36226702767` con **6/6 jobs verdes**:
+El commit funcional inicial `41505654053b3fb04625177d5b771b4a581dff8f` ejecutó GitHub Actions
+`36226702767` con **6/6 jobs verdes**. Una auditoría posterior detectó que el hash ASR no se
+verificaba en CI, que el manifiesto trataba un image ID local como digest estable y que el gate
+podía continuar demasiado pronto tras reiniciar PostgreSQL/Redis. Esos puntos se corrigen antes
+del cierre definitivo.
+
+Gates originales:
 
 - `compose-config` — Compose y contrato de 34 variables;
 - `yaml` — manifiesto, Compose y workflow;
@@ -81,8 +86,8 @@ GitHub.
    servidor WSGI/ASGI productivo.
 2. `/api/v1/health/` sigue siendo liveness. Readiness real debe pertenecer a backend antes de D02.
 3. El modelo ASR se provisiona fuera de Git; su snapshot y hash sí quedan versionados.
-4. El digest anotado corresponde al build local verificado; una publicación a registry deberá
-   registrar el digest remoto definitivo.
+4. D01 mantiene sólo el tag de la imagen baseline; una candidate deberá registrar obligatoriamente
+   el digest remoto definitivo, conforme al schema.
 
 ## Operación
 
@@ -96,10 +101,14 @@ sh scripts/test_d01_runtime.sh
 
 ## Cierre
 
-- commit funcional: `41505654053b3fb04625177d5b771b4a581dff8f`;
-- CI funcional: `36226702767`, **6/6 verde**;
-- gate local final: `d01-runtime-ok`;
-- no quedan bloqueos dentro del alcance D01.
+El cierre definitivo queda condicionado al CI del commit correctivo que incorpora:
+
+- verificación remota del puntero LFS del modelo ASR fijado;
+- manifest baseline sin digest local engañoso;
+- esperas explícitas de PostgreSQL, Redis y worker después de restart;
+- protección del namespace Compose de pruebas.
+
+Una vez esos gates estén verdes, se registrará aquí el commit/CI final.
 
 Los dos cambios propietarios pendientes —servidor productivo y readiness— pertenecen al inicio
-de D02 y no se ocultaron con comandos o endpoints ficticios. **D01 queda formalmente cerrada.**
+de D02 y no se ocultan con comandos o endpoints ficticios.

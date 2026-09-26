@@ -21,8 +21,8 @@ runtime:
     version: Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120
     sha256: 3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671
   images:
-    api: homex/backend:d01-9fac22e@sha256:ea2fd64aca79858a3a8185c2629fcb63f7f158cb63a6d4a582177a95836d3b4f
-    worker: homex/backend:d01-9fac22e@sha256:ea2fd64aca79858a3a8185c2629fcb63f7f158cb63a6d4a582177a95836d3b4f
+    api: homex/backend:d01-9fac22e
+    worker: homex/backend:d01-9fac22e
     frontend_proxy: pending-d02
   postgresql: 17.6-alpine3.22
   redis: 8.2.1-alpine3.22

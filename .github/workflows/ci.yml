@@ -36,6 +36,17 @@ jobs:
       - run: check-jsonschema --schemafile releases/manifest.schema.json releases/manifest.yaml
       - run: python3 scripts/test_release_manifest_schema.py
 
+  asr-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install PyYAML==6.0.3
+      - name: Verify pinned ASR snapshot LFS oid
+        run: python3 scripts/verify_asr_model.py --remote-lfs-pointer
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -60,7 +71,9 @@ jobs:
           ref: 9fac22ecc4f471237e6611b5a226532ab2a037ab
           path: sources/backend
       - name: Prepare read-only ASR mount fixture
-        run: mkdir -p /tmp/homex-asr-model && touch /tmp/homex-asr-model/model.bin
+        run: |
+          mkdir -p /tmp/homex-asr-model
+          touch /tmp/homex-asr-model/model.bin
       - name: Run D01 integration and resilience gates
         env:
           ASR_MODEL_SOURCE: /tmp/homex-asr-model

@@ -32,8 +32,10 @@ flotantes. El contexto backend se entrega mediante un contexto BuildKit nombrado
 archivos necesarios, evitando `.env`, `.git` y checkouts montados en runtime. La imagen ejecuta
 como UID/GID 10001, no root.
 
-API y worker usan exactamente `homex/backend:d01-9fac22e`. El digest local validado está en el
-manifiesto. La base uv está fijada también por digest.
+API y worker usan exactamente `homex/backend:d01-9fac22e`. D01 es una release `baseline`,
+por lo que el manifiesto fija el tag común pero no presenta un image ID local como si fuera un
+digest de registry. Un digest inmutable `tag@sha256:...` será obligatorio al pasar a
+`candidate`, tal como exige el JSON Schema. La imagen base uv sí está fijada por digest.
 
 ## Orden de arranque y roles
 
@@ -84,7 +86,16 @@ sigue siendo requisito previo para declarar staging listo en D02.
 ## Resiliencia verificada
 
 El gate `scripts/test_d01_runtime.sh` comprueba base vacía, segunda migración no-op, permisos,
-API/worker reales, wheel NLP, pipeline F08, modelo ASR read-only, temporal `0700`, persistencia
-PostgreSQL tras reinicio, outbox creado con Redis detenido, publicación al volver Redis y cleanup
-con el worker detenido. El namespace del gate es exclusivo y siempre se limpia preservando el
-código de salida original.
+API/worker reales, wheel NLP, pipeline F08, modelo ASR montado read-only, temporal `0700`,
+persistencia PostgreSQL tras reinicio, outbox creado con Redis detenido, publicación al volver
+Redis y cleanup con el worker detenido. Después de reiniciar PostgreSQL, Redis o worker, el gate
+espera explícitamente a que vuelvan a responder antes de continuar.
+
+El script rechaza cualquier `D01_COMPOSE_PROJECT` que no comience con `homex-d01-`, evitando
+que su cleanup con `down --volumes` pueda apuntar accidentalmente al proyecto normal.
+
+El job CI `asr-contract` verifica además el `oid sha256` del puntero Git LFS de
+`model.bin` directamente contra el snapshot Hugging Face fijado, sin descargar los 484 MB.
+Para una provisión local real, `scripts/verify_asr_model.py` exige también
+`config.json`, `tokenizer.json` y `vocabulary.txt` y calcula el SHA-256 completo de
+`model.bin`.

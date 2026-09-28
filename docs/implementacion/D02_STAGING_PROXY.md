@@ -3,7 +3,7 @@
 **Fecha:** 28 de septiembre de 2026  
 **Rama:** `feat/d02-staging-proxy`  
 **Commit base:** `812569224094483f7cffc6d5573580fd72aab872`  
-**Estado:** implementación y gates locales completos; CI remoto se ejecutará al publicar la rama.
+**Estado:** implementación completada y validada local y remotamente. D02 lista para merge a `main`.
 
 ## Componentes fijados
 
@@ -104,8 +104,22 @@ quedó situada después del sync final y el gate comprueba la versión dentro de
 
 El workflow añade `staging-integration`, que fija los SHA de backend/frontend, instala Chromium y
 ejecuta el gate completo. Los jobs existentes construyen ahora ambas imágenes con esas mismas
-revisiones. El número de run y su resultado deben añadirse después del commit/push, antes de
-fusionar y declarar el cierre remoto formal.
+revisiones.
+
+Evidencia remota de cierre:
+
+- commit funcional validado: `fc9b98d4162817288c13f1401d50aeefb50cb8e8`;
+- GitHub Actions run: `36441879203`;
+- resultado: **8/8 jobs verdes**;
+- `staging-integration`: `d02-auth-status-preservation-ok`,
+  `d02-permissions-preservation-ok`, `d02-multipart-media-ok`,
+  `d02-spa-cache-compression-ok`, `d02-cors-ok`, `d02-browser-smoke-ok` y
+  `d02-http-api-smoke-ok`;
+- regresión D01: `d01-runtime-ok`;
+- build frontend: type-check + Vite correctos y **0 vulnerabilidades** reportadas por npm;
+- `compose-config`, YAML, release-contract, ASR-contract y gitleaks: verdes.
+
+Con esta evidencia remota D02 queda formalmente cerrada y lista para fusionarse a `main`.
 
 ## Operación
 

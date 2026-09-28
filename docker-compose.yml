@@ -11,12 +11,14 @@ x-backend-environment: &backend-environment
   HOMEX_AUDIO_MAX_BYTES: ${HOMEX_AUDIO_MAX_BYTES:-25000000}
   HOMEX_AUDIO_TTL_SECONDS: ${HOMEX_AUDIO_TTL_SECONDS:-3600}
   HOMEX_OUTBOX_RECONCILE_SECONDS: ${HOMEX_OUTBOX_RECONCILE_SECONDS:-3600}
+  HOMEX_MEDIA_ROOT: /var/lib/homex/media
+  HOMEX_MEDIA_URL: /media/
   HOMEX_ASR_MODEL_PATH: /opt/homex/models/faster-whisper-small
   HOMEX_ASR_DEVICE: ${HOMEX_ASR_DEVICE:-cpu}
   HOMEX_ASR_COMPUTE_TYPE: ${HOMEX_ASR_COMPUTE_TYPE:-int8}
 
 x-backend-image: &backend-image
-  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d01-9fac22e}
+  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d02-0659dc5}
   build:
     context: .
     dockerfile: docker/backend.Dockerfile
@@ -94,11 +96,19 @@ services:
   api:
     <<: *backend-image
     environment: *backend-environment
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+    command:
+      - gunicorn
+      - config.wsgi:application
+      - --bind=0.0.0.0:8000
+      - --workers=${GUNICORN_WORKERS:-2}
+      - --timeout=${GUNICORN_TIMEOUT:-120}
+      - --access-logfile=-
+      - --error-logfile=-
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - audio_temporal:/var/lib/homex/audio-temporal
+      - media_persistente:/var/lib/homex/media
       - ./releases/manifest.yaml:/release/manifest.yaml:ro
     healthcheck:
       test:
@@ -106,7 +116,12 @@ services:
         - python
         - -c
         - >-
-          import urllib.request;
+          import os, urllib.request;
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.integration');
+          import django; django.setup();
+          from django.db import connection;
+          connection.ensure_connection();
+          connection.cursor().execute('SELECT 1');
           urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=2).read()
       interval: 5s
       timeout: 3s
@@ -127,6 +142,7 @@ services:
     command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--hostname=worker@%h"]
     volumes:
       - audio_temporal:/var/lib/homex/audio-temporal
+      - media_persistente:/var/lib/homex/media
       - type: bind
         source: ${ASR_MODEL_SOURCE:?ASR_MODEL_SOURCE is required}
         target: /opt/homex/models/faster-whisper-small
@@ -144,6 +160,31 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks: [data]
+
+  frontend-proxy:
+    image: homex/frontend-proxy:${HOMEX_FRONTEND_IMAGE_TAG:-d02-57c32d3}
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      additional_contexts:
+        frontend: ${FRONTEND_CONTEXT:-../homex-frontend}
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL is required}
+    ports:
+      - "${STAGING_HTTP_BIND:-127.0.0.1}:${STAGING_HTTP_PORT:-8080}:8080"
+    volumes:
+      - media_persistente:/var/lib/homex/media:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [app]
 
   publisher:
     <<: *backend-image
@@ -192,3 +233,4 @@ networks:
 volumes:
   postgres_data:
   audio_temporal:
+  media_persistente:

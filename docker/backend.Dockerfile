@@ -15,6 +15,7 @@ WORKDIR /app
 
 COPY --from=backend pyproject.toml uv.lock ./
 COPY --from=backend vendor/ ./vendor/
+COPY docker/requirements-deploy.lock /tmp/requirements-deploy.lock
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --extra worker --no-install-project
 
@@ -28,9 +29,12 @@ COPY scripts/verify_expected_migrations.py /opt/homex-deploy/verify_expected_mig
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --extra worker \
+    && uv pip install --python /app/.venv/bin/python --no-deps --require-hashes \
+        --requirements /tmp/requirements-deploy.lock \
     && install -d -o homex -g homex -m 0700 /var/lib/homex/audio-temporal \
+    && install -d -o homex -g homex -m 0755 /var/lib/homex/media \
     && chown -R homex:homex /app
 
 USER 10001:10001
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

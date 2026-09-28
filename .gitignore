@@ -28,3 +28,7 @@ Thumbs.db
 # Docker local
 docker-data/
 volumes/
+
+# Python local
+__pycache__/
+*.py[cod]

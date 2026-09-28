@@ -7,7 +7,24 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 
 - D00 — baseline y contrato: cerrada.
 - D01 — runtime integrado backend + NLP: cerrada y verificada con CI remoto verde.
-- D02+ — pendientes según `docs/PLAN_MAESTRO.md`.
+- D02 — staging integrado y reverse proxy: implementada y validada localmente.
+- D03+ — pendientes según `docs/PLAN_MAESTRO.md`.
+
+## Staging D02
+
+D02 añade el build reproducible de Vue, Gunicorn y Nginx unprivileged como único punto HTTP.
+Vue y `/api` comparten origen; las rutas profundas usan fallback SPA y los uploads atraviesan el
+proxy sin ampliar CORS/CSRF. Consulte `docs/implementacion/D02_STAGING_PROXY.md`.
+
+```bash
+docker compose --env-file .env build backend frontend-proxy
+docker compose --env-file .env up -d postgres redis
+docker compose --env-file .env run --rm migrate
+docker compose --env-file .env run --rm grant-runtime
+docker compose --env-file .env up -d api frontend-proxy worker
+```
+
+Gate navegador/API: `sh scripts/test_d02_staging.sh`.
 
 ## Runtime D01
 
@@ -48,9 +65,10 @@ efímeros. Producción no debe usar los marcadores de `.env.example`.
 
 ```text
 .github/workflows/ci.yml       config, build, integración y secretos
-docker/backend.Dockerfile      imagen común API/worker
+docker/backend.Dockerfile      imagen común API/worker con Gunicorn
+docker/frontend.Dockerfile     build Vue + runtime Nginx
 docker/postgres/init/          bootstrap de roles PostgreSQL
-docker-compose.yml             runtime integrado D01
+docker-compose.yml             runtime integrado D01/D02
 docs/ARQUITECTURA_DEPLOY.md    arquitectura y fronteras
 docs/implementacion/           evidencia por fase
 releases/manifest.yaml         componentes exactos

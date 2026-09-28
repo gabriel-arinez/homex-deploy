@@ -3,24 +3,26 @@
 ## Autoridades y topología
 
 PostgreSQL es la autoridad comercial. Redis transporta identificadores y puede reconstruirse
-desde outbox. R2 será la media persistente en D03. El audio ASR vive en un volumen privado,
+desde outbox. R2 será la media persistente en D03. D02 usa un volumen Docker de media sólo para staging. El audio ASR vive en un volumen privado,
 temporal y excluido de backups. `homex-nlp` es un wheel embebido en el worker, no un servicio HTTP.
 
 ```text
-API Django ---------> PostgreSQL <--------- worker Celery
-   |                       |                       |
-   +-> audio temporal      +-> outbox -> Redis ---+
-                                                  |
-                                      ASR + homex-nlp 0.1.0
+Navegador -> Nginx :8080 -> Vue estático
+                  |
+                  +-> /api -> Gunicorn/Django -> PostgreSQL <---- worker Celery
+                                      |               |                 |
+                                      +-> audio       +-> outbox -> Redis
+                                                                        |
+                                                            ASR + homex-nlp 0.1.0
 ```
 
 ## Fuentes fijadas
 
 | Componente | Revisión/versión |
 | --- | --- |
-| backend | `9fac22ecc4f471237e6611b5a226532ab2a037ab` |
-| frontend | `9374c2f73b5496dc79fd70dbb250ac4f645f8ec5` |
-| NLP | `0.1.0`, commit `b5fe2921320c9031f6d44dc5c91a18411daa393e` |
+| backend | `0659dc553af15b2125fad9b4ac0579669916e77b` |
+| frontend | `57c32d3aa2c2e46fbcc7136f6a90995b67c664ea` |
+| NLP | `0.1.0`, evidencia de integración `55236655956c2f488af645aafa657db39af66b60` |
 | wheel NLP | SHA-256 `cfacc3a987f6158f43934cb64304fa50ea3e577cfa576f3db1e6d2a9576d19e6` |
 | ASR | `Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120` |
 | ASR model.bin | SHA-256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671` |
@@ -32,7 +34,7 @@ flotantes. El contexto backend se entrega mediante un contexto BuildKit nombrado
 archivos necesarios, evitando `.env`, `.git` y checkouts montados en runtime. La imagen ejecuta
 como UID/GID 10001, no root.
 
-API y worker usan exactamente `homex/backend:d01-9fac22e`. D01 es una release `baseline`,
+API y worker usan exactamente `homex/backend:d02-0659dc5`; Vue/Nginx usa `homex/frontend-proxy:d02-57c32d3`. D01 es una release `baseline`,
 por lo que el manifiesto fija el tag común pero no presenta un image ID local como si fuera un
 digest de registry. Un digest inmutable `tag@sha256:...` será obligatorio al pasar a
 `candidate`, tal como exige el JSON Schema. La imagen base uv sí está fijada por digest.
@@ -53,14 +55,14 @@ migraciones hoja HOMEX se compara contra Django y contra `django_migrations`.
 | Servicio/job | Comando real |
 | --- | --- |
 | migrate | `python manage.py migrate --noinput` |
-| API D01 local | `python manage.py runserver 0.0.0.0:8000 --noreload` |
+| API D02 | `gunicorn config.wsgi:application --bind=0.0.0.0:8000` |
 | worker | `celery -A config worker --loglevel=INFO` |
 | publisher | `python manage.py publicar_outbox_capturas` |
 | reconciler | `python manage.py reconciliar_outbox_capturas` |
 | cleanup | `python manage.py limpiar_audio_temporal` |
 
-El servidor Django es deliberadamente sólo el runtime local D01. D02 no puede promoverlo a
-staging/producción: backend todavía debe fijar un servidor WSGI/ASGI productivo en su lock.
+D02 instala Gunicorn 23.0.0 desde un lock de despliegue con hash. Esta dependencia es propia de
+la imagen operativa y se instala después del sync backend para que uv no la retire.
 
 ## Almacenamiento y exposición
 
@@ -68,20 +70,22 @@ staging/producción: backend todavía debe fijar un servidor WSGI/ASGI productiv
 - Redis: sin AOF/snapshot, no autoritativo.
 - `audio_temporal`: compartido sólo por API, worker y cleanup; modo `0700`; sin puerto/ruta HTTP.
 - modelo ASR: bind mount sólo en worker y de solo lectura.
-- frontend y R2: fuera de D01.
+- `media_persistente`: staging local, escrito por API y leído por Nginx; será reemplazado por R2 en D03.
+- frontend: artefacto Vite inmutable dentro de la imagen Nginx.
 
 La red `data` es interna. PostgreSQL/Redis sólo publican loopback para diagnóstico local. API se
-publica en loopback; no existe aún reverse proxy público.
+publica en loopback para diagnóstico; Nginx es el punto HTTP de staging y por defecto también
+publica sólo en loopback.
 
 ## Health
 
 - PostgreSQL: `pg_isready`.
 - Redis: `redis-cli ping`.
-- API: liveness real `GET /api/v1/health/`.
+- API: healthcheck de despliegue con conexión PostgreSQL, `SELECT 1` y `GET /api/v1/health/`.
+- Nginx: documento raíz accesible y dependencia sobre API healthy.
 - worker: `celery inspect ping` dirigido al nodo fijo.
 
-Backend aún no ofrece readiness de dependencias; deploy no lo falsifica. Ese cambio propietario
-sigue siendo requisito previo para declarar staging listo en D02.
+Redis no forma parte del readiness comercial de API: si cae, PostgreSQL/outbox conserva el trabajo.
 
 ## Resiliencia verificada
 

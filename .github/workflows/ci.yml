@@ -14,6 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose --env-file .env.example config --quiet
       - run: python3 scripts/validate_env_contract.py
+      - run: python3 scripts/test_d02_contract.py
 
   yaml:
     runs-on: ubuntu-latest
@@ -54,12 +55,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9fac22ecc4f471237e6611b5a226532ab2a037ab
+          ref: 0659dc553af15b2125fad9b4ac0579669916e77b
           path: sources/backend
-      - name: Build common API/worker image without cache
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-frontend
+          ref: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+          path: sources/frontend
+      - name: Build API/worker and frontend/proxy images without cache
         env:
           BACKEND_CONTEXT: ./sources/backend
-        run: docker compose --env-file .env.example build --no-cache backend
+          FRONTEND_CONTEXT: ./sources/frontend
+        run: docker compose --env-file .env.example build --no-cache backend frontend-proxy
 
   integration:
     runs-on: ubuntu-latest
@@ -68,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9fac22ecc4f471237e6611b5a226532ab2a037ab
+          ref: 0659dc553af15b2125fad9b4ac0579669916e77b
           path: sources/backend
       - name: Prepare read-only ASR mount fixture
         run: |
@@ -82,6 +89,41 @@ jobs:
           POSTGRES_DB: homex
           D01_COMPOSE_PROJECT: homex-d01-ci
         run: sh scripts/test_d01_runtime.sh
+
+
+  staging-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 0659dc553af15b2125fad9b4ac0579669916e77b
+          path: sources/backend
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-frontend
+          ref: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+          path: sources/frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: npm
+          cache-dependency-path: sources/frontend/package-lock.json
+      - name: Install browser smoke dependencies
+        working-directory: sources/frontend
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Run D02 staging browser/API gates
+        env:
+          BACKEND_CONTEXT: ./sources/backend
+          FRONTEND_CONTEXT: ./sources/frontend
+          POSTGRES_USER: postgres
+          POSTGRES_DB: homex
+          D02_COMPOSE_PROJECT: homex-d02-ci
+          D02_BROWSER_SMOKE: "1"
+        run: sh scripts/test_d02_staging.sh
 
   secrets:
     runs-on: ubuntu-latest

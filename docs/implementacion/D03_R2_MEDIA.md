@@ -1,9 +1,9 @@
 # D03 — Cloudflare R2 y media pública
 
-**Fecha:** 28 de septiembre de 2026  
+**Fecha:** 30 de septiembre de 2026  
 **Rama:** `feat/d03-r2-media`  
 **Commit base:** `37e03f93d7093e53e0db30f7182f361944da30aa`  
-**Estado:** implementación y validación reproducible local completadas; la aplicación sobre una cuenta Cloudflare exige credenciales externas reales.
+**Estado:** implementación completa y CI remoto verde; pendiente únicamente aceptación operacional contra Cloudflare real, registro de esa evidencia y fusión a `main`.
 
 ## Alcance cerrado
 
@@ -98,10 +98,23 @@ permanecer hasta expirar o purgarse administrativamente.
 | gate integral | `d03-r2-gate-ok` |
 | regresión D02 HTTP/API/multipart | `d02-http-api-smoke-ok` |
 
-La cuenta disponible localmente contiene marcadores, por lo que no se ejecutó `terraform apply` ni
+La cuenta disponible durante la implementación contenía marcadores, por lo que no se ejecutó `terraform apply` ni
 el gate sobre Cloudflare real. Esto evita inventar dominio, account ID o secretos. El workflow CI
 valida Terraform y el ciclo completo mediante el servicio descartable; la aceptación real queda
 como paso operativo obligatorio del entorno que posea esas credenciales.
+
+## Evidencia remota
+
+El commit funcional `d39662bc574a5b56a531483b0c57cf1f2d1293b5` fue publicado en
+`feat/d03-r2-media` y ejecutó GitHub Actions CI run `36729729834` con resultado **success**.
+Los diez jobs terminaron verdes: `asr-contract`, `yaml`, `build`, `terraform-r2`,
+`release-contract`, `compose-config`, `secrets`, `integration`, `r2-integration` y
+`staging-integration`. Esto deja verificados remotamente el contrato D03, Terraform, el ciclo R2
+reproducible, secretos y las regresiones D01/D02.
+
+Esta evidencia no sustituye la aceptación contra Cloudflare real: el emulador S3 del CI no puede
+demostrar que el bucket, custom domain, DNS/TLS y reglas CDN hayan quedado materializados en la
+cuenta productiva.
 
 ## Rotación de credenciales
 
@@ -121,5 +134,24 @@ repositorio; los logs de aplicación deben conservar únicamente object keys y e
 El workflow añade `terraform-r2` y `r2-integration`. El primero valida código y lock Terraform. El
 segundo fija los mismos SHA backend/frontend de D02, construye el backend y ejecuta todo el ciclo de
 media sobre PostgreSQL y el endpoint descartable. No utiliza secretos Cloudflare ni simula que el
-emulador sea evidencia del dominio real. La evidencia remota se registrará tras el commit/push y el
-run verde de esta rama.
+emulador sea evidencia del dominio real. La evidencia remota del commit funcional quedó registrada
+en la sección anterior.
+
+## Pendiente para cierre definitivo
+
+El repositorio ya no tiene trabajo técnico pendiente que pueda completarse sin acceso a la cuenta
+Cloudflare real. Para declarar D03 cerrada falta únicamente:
+
+1. completar `infra/r2/terraform.tfvars` con `cloudflare_account_id`, `cloudflare_zone_id` y
+   `media_domain` reales;
+2. autenticar Terraform con un token administrativo externo apropiado y ejecutar `terraform plan`
+   seguido de `terraform apply`;
+3. confirmar en Cloudflare que `homex-public-media` existe, el custom domain está activo, `r2.dev`
+   permanece deshabilitado y la regla CDN está aplicada;
+4. crear credenciales runtime R2 Object Read & Write restringidas exclusivamente al bucket;
+5. cargar las cinco variables R2 reales en `.env` local/no versionado junto con una base PostgreSQL
+   descartable correctamente migrada;
+6. ejecutar `scripts/test_d03_r2_real.sh` y obtener `d03-r2-real-ok`;
+7. registrar esa evidencia final y fusionar `feat/d03-r2-media` en `main`.
+
+No se debe iniciar D04 antes de completar estos siete puntos.

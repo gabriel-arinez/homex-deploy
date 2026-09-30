@@ -8,8 +8,8 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 - D00 — baseline y contrato: cerrada.
 - D01 — runtime integrado backend + NLP: cerrada y verificada con CI remoto verde.
 - D02 — staging integrado y reverse proxy: cerrada y fusionada.
-- D03 — Cloudflare R2 y media pública: implementada y validada reproduciblemente.
-- D04+ — pendientes según `docs/PLAN_MAESTRO.md`.
+- D03 — Cloudflare R2 y media pública: implementación completa y CI remoto verde; pendiente aceptación contra Cloudflare real y fusión.
+- D04+ — pendientes; D04 no inicia hasta cerrar D03 según `docs/PLAN_MAESTRO.md`.
 
 ## Staging D02
 

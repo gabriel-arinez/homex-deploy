@@ -1,0 +1,41 @@
+x-r2-environment: &r2-environment
+  DJANGO_SETTINGS_MODULE: config.settings.production
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required}
+  R2_ENDPOINT_URL: ${R2_ENDPOINT_URL:?R2_ENDPOINT_URL is required}
+  R2_BUCKET_NAME: ${R2_BUCKET_NAME:?R2_BUCKET_NAME is required}
+  HOMEX_MEDIA_PUBLIC_DOMAIN: ${HOMEX_MEDIA_PUBLIC_DOMAIN:?HOMEX_MEDIA_PUBLIC_DOMAIN is required}
+
+services:
+  migrate:
+    environment: *r2-environment
+
+  grant-runtime:
+    environment: *r2-environment
+
+  api:
+    environment: *r2-environment
+    volumes: !override
+      - audio_temporal:/var/lib/homex/audio-temporal
+      - ./releases/manifest.yaml:/release/manifest.yaml:ro
+
+  worker:
+    environment: *r2-environment
+    volumes: !override
+      - audio_temporal:/var/lib/homex/audio-temporal
+      - type: bind
+        source: ${ASR_MODEL_SOURCE:?ASR_MODEL_SOURCE is required}
+        target: /opt/homex/models/faster-whisper-small
+        read_only: true
+
+  frontend-proxy:
+    volumes: !reset []
+
+  publisher:
+    environment: *r2-environment
+
+  reconciler:
+    environment: *r2-environment
+
+  cleanup:
+    environment: *r2-environment

@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose --env-file .env.example config --quiet
+      - run: docker compose -f docker-compose.yml -f compose.production.yml --env-file .env.example config --quiet
       - run: python3 scripts/validate_env_contract.py
       - run: python3 scripts/test_d02_contract.py
 
@@ -24,7 +25,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install yamllint==1.37.1
-      - run: yamllint docker-compose.yml releases/manifest.yaml .github/workflows/ci.yml
+      - run: >-
+          yamllint docker-compose.yml compose.production.yml compose.r2-test.yml
+          releases/manifest.yaml .github/workflows/ci.yml
 
   release-contract:
     runs-on: ubuntu-latest
@@ -124,6 +127,41 @@ jobs:
           D02_COMPOSE_PROJECT: homex-d02-ci
           D02_BROWSER_SMOKE: "1"
         run: sh scripts/test_d02_staging.sh
+
+  terraform-r2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.4
+      - run: terraform -chdir=infra/r2 fmt -check
+      - run: terraform -chdir=infra/r2 init -backend=false -input=false
+      - run: terraform -chdir=infra/r2 validate
+
+  r2-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 0659dc553af15b2125fad9b4ac0579669916e77b
+          path: sources/backend
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-frontend
+          ref: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+          path: sources/frontend
+      - name: Validate production R2 media contract and lifecycle
+        env:
+          BACKEND_CONTEXT: ./sources/backend
+          FRONTEND_CONTEXT: ./sources/frontend
+          POSTGRES_USER: postgres
+          POSTGRES_DB: homex
+          D03_COMPOSE_PROJECT: homex-d03-ci
+          D03_BUILD_BACKEND: "1"
+        run: sh scripts/test_d03_r2.sh
 
   secrets:
     runs-on: ubuntu-latest

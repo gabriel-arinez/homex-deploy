@@ -1,0 +1,4 @@
+cloudflare_account_id = "00000000000000000000000000000000"
+cloudflare_zone_id    = "00000000000000000000000000000000"
+media_domain          = "media.example.com"
+bucket_location       = "wnam"

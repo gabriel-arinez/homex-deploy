@@ -32,3 +32,11 @@ volumes/
 # Python local
 __pycache__/
 *.py[cod]
+
+# Terraform local/state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.tfstate.lock.info
+terraform.tfvars

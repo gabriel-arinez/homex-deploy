@@ -3,17 +3,23 @@
 ## Autoridades y topología
 
 PostgreSQL es la autoridad comercial. Redis transporta identificadores y puede reconstruirse
-desde outbox. R2 será la media persistente en D03. D02 usa un volumen Docker de media sólo para staging. El audio ASR vive en un volumen privado,
-temporal y excluido de backups. `homex-nlp` es un wheel embebido en el worker, no un servicio HTTP.
+desde outbox. R2 es la media persistente del perfil productivo desde D03. D02 conserva un volumen Docker de media sólo para staging. El audio ASR vive en un
+volumen privado, temporal y excluido de backups. `homex-nlp` es un wheel embebido en el worker, no un servicio HTTP.
 
 ```text
-Navegador -> Nginx :8080 -> Vue estático
-                  |
-                  +-> /api -> Gunicorn/Django -> PostgreSQL <---- worker Celery
-                                      |               |                 |
-                                      +-> audio       +-> outbox -> Redis
-                                                                        |
-                                                            ASR + homex-nlp 0.1.0
+Navegador
+   |
+   +--> Nginx :8080 --> Vue estático
+   |        |
+   |        +--> /api --> Gunicorn/Django --> PostgreSQL
+   |                         |                    ^
+   |                         +--> audio temporal  | outbox
+   |                                              |
+   |                                    Redis --> worker Celery
+   |                                              |
+   |                                      ASR + homex-nlp 0.1.0
+   |
+   +--> dominio media --> Cloudflare CDN --> R2 homex-public-media
 ```
 
 ## Fuentes fijadas
@@ -70,7 +76,9 @@ la imagen operativa y se instala después del sync backend para que uv no la ret
 - Redis: sin AOF/snapshot, no autoritativo.
 - `audio_temporal`: compartido sólo por API, worker y cleanup; modo `0700`; sin puerto/ruta HTTP.
 - modelo ASR: bind mount sólo en worker y de solo lectura.
-- `media_persistente`: staging local, escrito por API y leído por Nginx; será reemplazado por R2 en D03.
+- `media_persistente`: existe sólo en el perfil staging D02.
+- `homex-public-media`: único almacenamiento persistente productivo, accedido por Django con credenciales R2; las lecturas públicas usan el dominio CDN.
+- PostgreSQL guarda object keys `productos/…` y `proformas/…`; no URLs ni binarios.
 - frontend: artefacto Vite inmutable dentro de la imagen Nginx.
 
 La red `data` es interna. PostgreSQL/Redis sólo publican loopback para diagnóstico local. API se
@@ -103,3 +111,11 @@ El job CI `asr-contract` verifica además el `oid sha256` del puntero Git LFS de
 Para una provisión local real, `scripts/verify_asr_model.py` exige también
 `config.json`, `tokenizer.json` y `vocabulary.txt` y calcula el SHA-256 completo de
 `model.bin`.
+
+## Perfil productivo D03
+
+`compose.production.yml` reemplaza la configuración de staging por settings Django productivos y
+retira el volumen `/var/lib/homex/media` de API, worker y Nginx. Las credenciales R2 sólo llegan a
+procesos Django. `infra/r2/` crea el bucket `homex-public-media`, el dominio propio TLS y una regla
+de caché limitada a los prefijos públicos. Vue consume únicamente URLs públicas devueltas por el
+API. El endpoint R2, access key y secret key están ausentes de su build, OpenAPI y runtime.

@@ -1,0 +1,74 @@
+x-backend-r2-test: &backend-r2-test
+  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d02-0659dc5}
+  build:
+    context: .
+    dockerfile: docker/backend.Dockerfile
+    additional_contexts:
+      backend: ${BACKEND_CONTEXT:-../homex-backend}
+
+services:
+  r2-test:
+    image: motoserver/moto:5.1.12@sha256:e1cf8b624019e6eba25cb5b37efdf95a463fc24691978540a1c7008b7d02fda0
+    command: ["-p", "5000"]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:5000/', timeout=2).read()
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks: [data]
+
+  r2-init:
+    <<: *backend-r2-test
+    environment:
+      AWS_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required}
+      AWS_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required}
+      R2_ENDPOINT_URL: ${R2_ENDPOINT_URL:?R2_ENDPOINT_URL is required}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:?R2_BUCKET_NAME is required}
+    command:
+      - python
+      - -c
+      - >-
+        import boto3, json, os;
+        client=boto3.client('s3', endpoint_url=os.environ['R2_ENDPOINT_URL']);
+        bucket=os.environ['R2_BUCKET_NAME'];
+        client.create_bucket(Bucket=bucket);
+        client.put_bucket_policy(Bucket=bucket, Policy=json.dumps({
+          'Version':'2012-10-17',
+          'Statement':[{'Sid':'PublicRead','Effect':'Allow','Principal':'*',
+          'Action':['s3:GetObject'],'Resource':[f'arn:aws:s3:::{bucket}/*']}]}));
+        print('d03-r2-test-bucket-public-ok')
+    depends_on:
+      r2-test:
+        condition: service_healthy
+    networks: [data]
+
+  r2-media-test:
+    <<: *backend-r2-test
+    profiles: [r2-test]
+    volumes:
+      - ./scripts/test_r2_media_runtime.py:/opt/homex-deploy/test_r2_media_runtime.py:ro
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DJANGO_ALLOWED_HOSTS: testserver
+      CORS_ALLOWED_ORIGINS: ""
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required}
+      R2_ENDPOINT_URL: ${R2_ENDPOINT_URL:?R2_ENDPOINT_URL is required}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:?R2_BUCKET_NAME is required}
+      HOMEX_MEDIA_PUBLIC_DOMAIN: ${HOMEX_MEDIA_PUBLIC_DOMAIN:?HOMEX_MEDIA_PUBLIC_DOMAIN is required}
+      R2_PUBLIC_TEST_BASE_URL: http://r2-test:5000/homex-public-media
+    command: ["python", "/opt/homex-deploy/test_r2_media_runtime.py"]
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+      r2-init:
+        condition: service_completed_successfully
+    networks: [data]

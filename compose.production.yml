@@ -1,0 +1,44 @@
+x-production-environment: &production-environment
+  DJANGO_SETTINGS_MODULE: config.settings.production
+  HOMEX_MEDIA_STORAGE: ${HOMEX_MEDIA_STORAGE:-filesystem}
+  HOMEX_MEDIA_ROOT: /var/lib/homex/media
+  HOMEX_MEDIA_URL: /media/
+  HOMEX_HTTPS_ENABLED: ${HOMEX_HTTPS_ENABLED:-0}
+
+services:
+  migrate:
+    environment: *production-environment
+
+  api:
+    environment: *production-environment
+    volumes: !override
+      - audio_temporal:/var/lib/homex/audio-temporal
+      - type: bind
+        source: ${HOMEX_MEDIA_HOST_PATH:?HOMEX_MEDIA_HOST_PATH is required}
+        target: /var/lib/homex/media
+      - ./releases/manifest.yaml:/release/manifest.yaml:ro
+
+  worker:
+    environment: *production-environment
+    volumes: !override
+      - audio_temporal:/var/lib/homex/audio-temporal
+      - type: bind
+        source: ${ASR_MODEL_SOURCE:?ASR_MODEL_SOURCE is required}
+        target: /opt/homex/models/faster-whisper-small
+        read_only: true
+
+  frontend-proxy:
+    volumes: !override
+      - type: bind
+        source: ${HOMEX_MEDIA_HOST_PATH:?HOMEX_MEDIA_HOST_PATH is required}
+        target: /var/lib/homex/media
+        read_only: true
+
+  publisher:
+    environment: *production-environment
+
+  reconciler:
+    environment: *production-environment
+
+  cleanup:
+    environment: *production-environment

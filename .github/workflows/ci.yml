@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose --env-file .env.example config --quiet
-      - run: docker compose -f docker-compose.yml -f compose.production.yml --env-file .env.example config --quiet
+      - run: docker compose -f docker-compose.yml -f compose.d03-media.yml --env-file .env.example config --quiet
       - run: docker compose -f docker-compose.yml -f compose.production.yml --env-file .env.production.example --profile operations config --quiet
       - run: python3 scripts/validate_env_contract.py
       - run: python3 scripts/test_d02_contract.py
@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install yamllint==1.37.1
-      - run: yamllint docker-compose.yml compose.production.yml releases/manifest.yaml .github/workflows/ci.yml
+      - run: yamllint docker-compose.yml compose.d03-media.yml compose.production.yml releases/manifest.yaml .github/workflows/ci.yml
 
   release-contract:
     runs-on: ubuntu-latest

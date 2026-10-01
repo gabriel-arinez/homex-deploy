@@ -70,6 +70,8 @@ def main() -> None:
             "compose.production.yml",
             "--env-file",
             ".env.example",
+            "--profile",
+            "operations",
             "config",
             "--format",
             "json",
@@ -90,12 +92,14 @@ def main() -> None:
     api_media = media_mount(api)
     proxy_media = media_mount(proxy)
 
+    expected_source = os.environ.get("HOMEX_MEDIA_HOST_PATH", "/srv/homex/media")
+
     assert api_media["type"] == "bind"
-    assert api_media["source"] == "/srv/homex/media"
+    assert api_media["source"] == expected_source
     assert not api_media.get("read_only", False)
 
     assert proxy_media["type"] == "bind"
-    assert proxy_media["source"] == "/srv/homex/media"
+    assert proxy_media["source"] == expected_source
     assert proxy_media.get("read_only") is True
 
     if any(

@@ -64,7 +64,7 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 - el acceso productivo será privado mediante Cloudflare Zero Trust/Tunnel, sin exigir dominio público.
 
 Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
-backend F09.1 y D03 cerrados; D04 es la siguiente fase.
+backend F09.1 y D03 cerrados; D04 está en curso con automatización verde y validación externa pendiente.
 
 ---
 
@@ -900,7 +900,7 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 | D01 | F08.4 | — | F06 | CERRADA |
 | D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
 | D03 | **F09.1** | FE08 | F09 | CERRADA |
-| D04 | F09.1 | FE08 | F09 | SIGUIENTE |
+| D04 | F09.1 | FE08 | F09 | EN CURSO — CI verde; Cloudflare/dispositivos pendientes |
 | D05 | F09.1 | FE08 | F09 | tras D04 |
 | D06 | F09.1 | FE08 | F09 | tras D05 |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
@@ -919,7 +919,7 @@ Backend F09.1 ------------------------- CERRADA
 D03 media local persistente ------------ CERRADA
         |
         v
-D04 release candidate + Zero Trust/Tunnel
+D04 release candidate + HTTPS + Zero Trust/Tunnel — EN CURSO
         |
         v
 D05 backup + restore + rollback

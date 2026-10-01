@@ -2,10 +2,11 @@
 
 ## Estado
 
-**EN CURSO.**
+**EN CURSO — PARTE AUTOMATIZABLE VERDE; VALIDACIÓN EXTERNA PENDIENTE.**
 
-La parte reproducible del repositorio está implementada. D04 no se cerrará hasta validar un tunnel
-real de Cloudflare Zero Trust y acceso desde escritorio + móvil/tablet autorizados.
+La release candidate reproducible está implementada y validada en CI. D04 no se cerrará hasta
+validar un tunnel real de Cloudflare Zero Trust y acceso desde escritorio + móvil/tablet
+autorizados.
 
 ## Base
 
@@ -127,3 +128,42 @@ No se almacenarán tokens, capturas con secretos ni credenciales en Git.
 ## Cierre
 
 D04 sólo cambia a **CERRADA** después de CI verde y de las pruebas externas anteriores.
+
+
+## Evidencia automatizada
+
+Commit funcional validado: `1ed902ee25658294fcb357925bcf532d80bcfd77`.
+
+GitHub Actions run `36812418834`: **success**.
+
+Jobs verdes:
+
+- `compose-config`;
+- `yaml`;
+- `release-contract`;
+- `asr-contract`;
+- `build`;
+- `integration`;
+- `staging-integration`;
+- `media-local-integration`;
+- `private-release-candidate`;
+- `secrets`.
+
+El gate D04 confirmó en HTTPS:
+
+- `window.isSecureContext=true`;
+- flujo comercial completo;
+- captura de audio;
+- ASR `faster-whisper-small` en el snapshot/hash fijado;
+- NLP + worker + Celery beat;
+- revisión HITL;
+- evidencia PostgreSQL;
+- documentos y media;
+- ausencia de migraciones nuevas;
+- ausencia de source maps y secretos en el bundle.
+
+El fallo HTTP previo queda conservado como evidencia de por qué HTTPS no es opcional para el
+navegador de HOMEX.
+
+La única condición restante para cerrar D04 es la validación externa de Cloudflare y dispositivos
+reales descrita arriba.

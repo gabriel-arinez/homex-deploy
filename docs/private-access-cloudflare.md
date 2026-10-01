@@ -5,183 +5,262 @@
 Permitir que PC, laptop, tablet y móvil autorizados accedan a HOMEX sin comprar un dominio, sin IP
 pública y sin abrir puertos entrantes en Internet.
 
-La release D04 usa el hostname privado:
-
-```text
-homex.internal
-```
-
-y el origen local:
+La release D04 usa:
 
 ```text
 https://homex.internal
 ```
 
-El listener de Nginx permanece ligado a `127.0.0.1:443` en el servidor. `cloudflared` corre en
-el host y es el único conector entre Cloudflare One y ese origen local.
+Nginx escucha sólo en `127.0.0.1:443` del servidor. Cloudflare Tunnel conecta de salida y los
+clientes autorizados llegan mediante Cloudflare One Client.
 
-## 1. Preparar el origen
+## 1. Preparar el servidor HOMEX
 
-En el servidor HOMEX:
+Crear la resolución local del hostname:
 
 ```bash
-echo '127.0.0.1 homex.internal' | sudo tee -a /etc/hosts
+grep -qE '(^|[[:space:]])homex\.internal([[:space:]]|$)' /etc/hosts ||
+  echo '127.0.0.1 homex.internal' | sudo tee -a /etc/hosts
+
 getent hosts homex.internal
-curl --cacert /etc/homex/tls/homex-root-ca.crt -fsS https://homex.internal/api/v1/health/
 ```
 
-El hostname debe resolver localmente a `127.0.0.1`.
-
-### 1.1. Generar TLS interno HOMEX
-
-Antes de levantar la release:
+Preparar media persistente:
 
 ```bash
+sudo install -d -o 10001 -g 10001 -m 0755 /srv/homex/media
+```
+
+Crear el entorno productivo local:
+
+```bash
+cp .env.production.example .env.production
+```
+
+Editar `.env.production` y sustituir únicamente los marcadores de secretos/rutas reales. El archivo
+está excluido de Git.
+
+## 2. Generar TLS interno HOMEX
+
+```bash
+set -a
+. ./.env.production
+set +a
+
 HOMEX_PRIVATE_HOSTNAME=homex.internal \
 sh scripts/generate_internal_tls.sh
 ```
 
 Se crean en `/etc/homex/tls/`:
 
-- `homex-root-ca.key`: **privada del servidor; nunca copiarla a dispositivos**;
+- `homex-root-ca.key`: clave privada de la CA; **nunca sale del servidor**;
 - `homex-root-ca.crt`: certificado raíz que sí se instala en dispositivos autorizados;
 - `homex.internal.key`: clave privada del servidor;
 - `homex.internal.crt`: certificado HTTPS del servicio.
 
-La CA local evita comprar un dominio y permite que el navegador trate
-`https://homex.internal` como contexto seguro una vez que el dispositivo confía en la CA.
-
-## 2. Instalar cloudflared fijado
-
-Desde la raíz de `homex-deploy`:
+Verificación local:
 
 ```bash
-set -a
-. ./.env.production.example
-set +a
-
-sh scripts/install_cloudflared.sh
+openssl verify \
+  -CAfile /etc/homex/tls/homex-root-ca.crt \
+  /etc/homex/tls/homex.internal.crt
 ```
 
-El instalador:
+## 3. Levantar la release candidate
 
-- fija `cloudflared 2026.9.2`;
-- verifica SHA256 antes de instalar;
-- instala `/usr/local/bin/cloudflared`;
-- instala `homex-cloudflared.service`;
-- usa `--token-file`, no un token embebido en Git ni en la unidad systemd.
+Con backend/frontend disponibles en las rutas declaradas por `.env.production`:
 
-## 3. Crear el Tunnel en Cloudflare
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f compose.production.yml \
+  --env-file .env.production \
+  --profile operations \
+  build --no-cache backend frontend-proxy
+
+docker compose \
+  -f docker-compose.yml \
+  -f compose.production.yml \
+  --env-file .env.production \
+  --profile operations \
+  up -d postgres redis
+
+docker compose \
+  -f docker-compose.yml \
+  -f compose.production.yml \
+  --env-file .env.production \
+  --profile operations \
+  run --rm migrate
+
+docker compose \
+  -f docker-compose.yml \
+  -f compose.production.yml \
+  --env-file .env.production \
+  --profile operations \
+  run --rm grant-runtime
+
+docker compose \
+  -f docker-compose.yml \
+  -f compose.production.yml \
+  --env-file .env.production \
+  --profile operations \
+  up -d api worker beat frontend-proxy
+```
+
+Comprobar el origen directamente en el servidor:
+
+```bash
+curl --cacert /etc/homex/tls/homex-root-ca.crt \
+  -fsS https://homex.internal/api/v1/health/
+```
+
+PostgreSQL, Redis y API no deben publicar puertos al host. Sólo Nginx debe escuchar en
+`127.0.0.1:443`.
+
+## 4. Habilitar Gateway para tráfico privado
 
 En Cloudflare Zero Trust:
 
-1. ir a **Networking > Tunnels**;
-2. crear un tunnel remoto para HOMEX;
-3. obtener el token del conector;
-4. crear el archivo del token sin dejarlo en el historial:
+1. **Traffic policies > Traffic settings**;
+2. abrir **Proxy and inspection**;
+3. activar **Allow Secure Web Gateway to proxy traffic**;
+4. activar **TCP**;
+5. activar **UDP**;
+6. ICMP es opcional y útil para diagnóstico.
+
+El routing por hostname privado requiere que el tráfico del cliente pase por Gateway.
+
+## 5. Crear Cloudflare Tunnel
+
+En **Networking > Tunnels**:
+
+1. crear un tunnel `cloudflared`, por ejemplo `homex`;
+2. esperar a obtener el token del conector;
+3. guardar sólo el token en el servidor, sin pegarlo en Git ni en scripts:
 
 ```bash
+sudo install -d -m 0700 /etc/homex/cloudflared
 sudo sh -c 'umask 077; cat > /etc/homex/cloudflared/tunnel-token'
 ```
 
 Pegar el token, Enter y Ctrl-D.
 
-Luego:
+Instalar el binario fijado por D04:
+
+```bash
+set -a
+. ./.env.production
+set +a
+
+sh scripts/install_cloudflared.sh
+```
+
+El instalador verifica SHA256 e instala `cloudflared 2026.9.2` y la unidad systemd.
+
+Validar:
 
 ```bash
 sudo systemctl enable --now homex-cloudflared.service
-sudo systemctl status homex-cloudflared.service
+sudo systemctl --no-pager --full status homex-cloudflared.service
 ```
 
-## 4. Crear la ruta privada
+## 6. Crear la ruta de hostname
 
-En el tunnel:
+En **Networking > Routes**:
 
-1. abrir **Routes**;
-2. **Add route**;
-3. elegir **Private hostname**;
-4. registrar `homex.internal`.
+1. **Create route**;
+2. tipo **Tunnel Hostname**;
+3. seleccionar el tunnel `homex`;
+4. Hostname: `homex.internal`;
+5. crear la ruta.
 
-No crear una Published Application y no asociar un dominio público.
+No usar **Published application** y no asociar un dominio público.
 
-El servidor que ejecuta `cloudflared` debe poder resolver `homex.internal`; D04 lo resuelve a
-`127.0.0.1` mediante `/etc/hosts`.
+## 7. Configurar el perfil de dispositivos
 
-## 5. Confiar la CA HOMEX en los dispositivos
+En **Zero Trust > Team & Resources > Devices > Device profiles > General profiles**, abrir el
+perfil usado por HOMEX.
 
-Copiar **sólo** `/etc/homex/tls/homex-root-ca.crt` a cada PC/tablet/móvil autorizado e
-instalarlo como autoridad raíz de confianza.
+Para **Split Tunnels**:
 
-Después de instalarlo, abrir `https://homex.internal` no debe mostrar advertencias de
-certificado. Esta condición es obligatoria para usar grabación de voz en navegador.
+- si se usa modo **Include**, incluir:
+  - IPv4: `172.64.128.0/20`;
+  - IPv6: `2606:4700:0cf1:4000::/64`;
+- si se usa modo **Exclude**, asegurarse de que esos rangos no queden excluidos.
 
-No copiar nunca:
+En **Local Domain Fallback**, eliminar la entrada que capture el TLD `internal` si existe. La
+consulta de `homex.internal` debe llegar a Cloudflare Gateway para que el hostname route funcione.
+
+## 8. Crear la política de Access
+
+En **Zero Trust > Access controls > Applications**:
+
+1. **Create new application**;
+2. **Self-hosted and private**;
+3. **Add private hostname**;
+4. Hostname: `homex.internal`;
+5. Port: `443`;
+6. crear una política **Allow** sólo para las identidades autorizadas de HOMEX;
+7. habilitar **Authenticate with Cloudflare One Client** si corresponde al perfil elegido;
+8. guardar.
+
+Una aplicación HTTPS privada en 443 necesita SNI válido; el certificado D04 tiene SAN
+`homex.internal`.
+
+## 9. Preparar cada PC, tablet o móvil
+
+En cada dispositivo autorizado:
+
+1. instalar Cloudflare One Client;
+2. enrolarlo en la organización Zero Trust;
+3. copiar **sólo** `homex-root-ca.crt`;
+4. instalarlo como autoridad raíz de confianza;
+5. reconectar Cloudflare One Client para aplicar el perfil actualizado.
+
+Nunca copiar:
 
 - `homex-root-ca.key`;
-- `homex.internal.key`.
+- `homex.internal.key`;
+- el token del tunnel.
 
-## 6. Enrolar dispositivos
+En iOS/iPadOS, además de instalar el perfil de la CA, debe activarse la confianza completa para esa
+raíz. En Android, la CA se instala como certificado CA del usuario para navegación interna.
 
-Instalar Cloudflare One Client en cada dispositivo autorizado y enrolarlo en la organización Zero
-Trust.
+## 10. Validación manual obligatoria de D04
 
-El perfil del dispositivo debe enviar a Cloudflare:
-
-- las IP iniciales que Cloudflare usa para rutas de hostname privado;
-- las consultas DNS de `homex.internal`.
-
-Para la configuración por defecto de Cloudflare:
-
-```text
-IPv4  172.64.128.0/20
-IPv6  2606:4700:0cf1:4000::/64
-```
-
-En modo Split Tunnels **Include**, incluir esos rangos. En **Local Domain Fallback**, eliminar la
-entrada que capture `.internal` si existe, para que Gateway resuelva el hostname privado.
-
-## 7. Política de acceso
-
-Configurar reglas de enrolamiento y políticas Gateway/Zero Trust para que sólo usuarios y
-dispositivos autorizados puedan utilizar la ruta.
-
-D04 no considera suficiente que el tunnel esté "Healthy": debe probarse tanto un acceso permitido
-como un intento desde un dispositivo/identidad no autorizada.
-
-## 8. Validación manual obligatoria de D04
-
-Desde escritorio autorizado:
+En un escritorio autorizado y, como mínimo, en un móvil o tablet autorizado:
 
 ```text
 https://homex.internal
 ```
 
-Verificar candado/certificado confiable, login, navegación, API, media y una captura real de micrófono.
+Comprobar:
 
-Repetir desde al menos un móvil o tablet autorizado.
+- no aparece advertencia de certificado;
+- login funciona;
+- clientes/productos/proformas cargan;
+- imágenes/media cargan con normalidad;
+- una captura real de micrófono puede grabarse, enviarse y completar ASR/NLP/HITL.
 
-Luego comprobar:
+Comprobar aislamiento:
 
 - PostgreSQL y Redis no tienen puertos publicados;
 - API no tiene puerto publicado al host;
 - sólo Nginx escucha en `127.0.0.1:443`;
-- el acceso remoto deja de funcionar si se detiene `homex-cloudflared.service`;
-- un dispositivo no enrolado/no autorizado no puede alcanzar HOMEX.
+- un dispositivo/identidad no autorizado queda bloqueado;
+- al detener `homex-cloudflared.service`, el acceso remoto deja de funcionar;
+- al volver a iniciarlo, el acceso se recupera.
 
-## 9. HTTPS
+## 11. Cierre
 
-D04 usa HTTPS real en el navegador mediante una CA privada HOMEX. El túnel de Cloudflare protege
-el transporte remoto y Nginx presenta el certificado de `homex.internal`.
+D04 sólo se cierra cuando existen:
 
-`HOMEX_HTTPS_ENABLED=1` es obligatorio en producción D04. Los clientes deben confiar en
-`homex-root-ca.crt`; aceptar manualmente una advertencia de certificado no constituye evidencia
-válida de cierre.
+- CI verde de la release candidate;
+- tunnel real saludable;
+- escritorio autorizado validado;
+- móvil/tablet autorizado validado;
+- micrófono real validado;
+- prueba de denegación;
+- prueba de caída/recuperación del tunnel.
 
-## Fuentes de operación
-
-- Cloudflare One: private hostname routes;
-- Cloudflare One Client: Split Tunnels y Local Domain Fallback;
-- Cloudflare Tunnel: token-file para tunnels administrados remotamente.
-
-La documentación oficial debe revisarse antes de una instalación real si la interfaz de Cloudflare
-cambió desde D04.
+No se versionan secretos, claves privadas, tokens ni certificados cliente.

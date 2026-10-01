@@ -40,7 +40,8 @@ export ASR_MODEL_SOURCE="$model_dir"
 
 run_compose() {
   $compose -f docker-compose.yml -f compose.production.yml \
-    --project-name "$project" --env-file "$env_file" --profile operations "$@"
+    --project-name "$project" --env-file "$env_file" \
+    --profile operations --profile build "$@"
 }
 
 wait_url() {

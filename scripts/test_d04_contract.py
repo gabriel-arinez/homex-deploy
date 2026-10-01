@@ -64,7 +64,7 @@ def main() -> None:
     ):
         require(overlay, fragment, "compose.production.yml")
 
-    require(unit, "--token-file /etc/homex/cloudflared/tunnel-token", "systemd unit")
+    require(\n        unit,\n        "tunnel --no-autoupdate --loglevel info run --token-file "+\n        "/etc/homex/cloudflared/tunnel-token",\n        "systemd unit",\n    )
     reject(unit, "--token ", "systemd unit")
     reject(unit, "TUNNEL_TOKEN=", "systemd unit")
 

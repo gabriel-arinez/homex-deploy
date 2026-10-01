@@ -30,7 +30,7 @@ def main() -> None:
     overlay = (ROOT / "compose.production.yml").read_text()
     unit = (ROOT / "systemd/homex-cloudflared.service").read_text()
     installer = (ROOT / "scripts/install_cloudflared.sh").read_text()
-    frontend_image = (ROOT / "docker/frontend.Dockerfile").read_text()
+    prepare_asr = (ROOT / "scripts/prepare_asr_d04.py").read_text()\n    frontend_image = (ROOT / "docker/frontend.Dockerfile").read_text()
     manifest = (ROOT / "releases/manifest.yaml").read_text()
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 
@@ -85,6 +85,14 @@ def main() -> None:
 
     for sha in (BACKEND_SHA, FRONTEND_SHA, NLP_SHA):
         require(manifest, sha, "releases/manifest.yaml")
+
+    for fragment in (
+        "Systran/faster-whisper-small",
+        "536b0662742c02347bc0e980a01041f333bce120",
+        "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671",
+    ):
+        require(prepare_asr, fragment, "scripts/prepare_asr_d04.py")
+        require(manifest, fragment, "releases/manifest.yaml")
     for image in (
         "api: homex/backend:d04-9ce7230",
         "worker: homex/backend:d04-9ce7230",

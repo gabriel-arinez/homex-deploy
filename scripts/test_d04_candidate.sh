@@ -72,10 +72,12 @@ if [ "${D04_SKIP_BUILD:-0}" != "1" ]; then
   run_compose build --no-cache backend frontend-proxy
 fi
 
-# El modelo ASR se prepara dentro de la misma imagen backend/worker fijada por la release.
+# El modelo ASR se prepara dentro de la misma imagen backend/worker fijada por la release,
+# usando exactamente el snapshot y hash declarados por D04.
 run_compose run --rm --no-deps \
   -v "$model_dir:/opt/homex-d04-asr" \
-  backend python scripts/preparar_modelo_asr_f09.py /opt/homex-d04-asr
+  -v "$(pwd)/scripts/prepare_asr_d04.py:/opt/homex-deploy/prepare_asr_d04.py:ro" \
+  backend python /opt/homex-deploy/prepare_asr_d04.py /opt/homex-d04-asr
 
 espeak-ng -v es-la -s 115 -g 10 -w "$audio_fixture" \
   "tres mesas, total cien bolivianos"

@@ -14,9 +14,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose --env-file .env.example config --quiet
       - run: docker compose -f docker-compose.yml -f compose.production.yml --env-file .env.example config --quiet
+      - run: docker compose -f docker-compose.yml -f compose.production.yml --env-file .env.production.example --profile operations config --quiet
       - run: python3 scripts/validate_env_contract.py
       - run: python3 scripts/test_d02_contract.py
       - run: python3 scripts/test_d03_contract.py
+      - run: python3 scripts/test_d04_contract.py
 
   yaml:
     runs-on: ubuntu-latest
@@ -62,13 +64,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+          ref: deba1de244395dbdcb266f03026630b403768d71
           path: sources/frontend
-      - name: Build API/worker and frontend/proxy images without cache
+      - name: Build D04 API/worker and frontend/proxy images without cache
         env:
           BACKEND_CONTEXT: ./sources/backend
           FRONTEND_CONTEXT: ./sources/frontend
-        run: docker compose --env-file .env.example build --no-cache backend frontend-proxy
+        run: |
+          docker compose -f docker-compose.yml -f compose.production.yml \
+            --env-file .env.production.example build --no-cache backend frontend-proxy
+          docker image inspect homex/backend:d04-9ce7230 --format 'D04_API_IMAGE_ID={{.Id}}'
+          docker image inspect homex/frontend-proxy:d04-deba1de --format 'D04_FRONTEND_IMAGE_ID={{.Id}}'
 
   integration:
     runs-on: ubuntu-latest
@@ -105,7 +111,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+          ref: deba1de244395dbdcb266f03026630b403768d71
           path: sources/frontend
       - uses: actions/setup-node@v4
         with:
@@ -139,7 +145,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+          ref: deba1de244395dbdcb266f03026630b403768d71
           path: sources/frontend
       - name: Run D03 local media production gate
         env:

@@ -1,18 +1,18 @@
 schema_version: "1.0"
 release:
-  version: "0.2.0-d02"
-  created_at: "2026-09-27T00:00:00-04:00"
+  version: "0.4.0-d04-pre"
+  created_at: "2026-09-30T22:56:00-04:00"
   status: baseline
 sources:
   backend:
     repository: gabriel-arinez/homex-backend
-    revision: 0659dc553af15b2125fad9b4ac0579669916e77b
+    revision: 9ce723048d98a3925be45d9c359a25e6be7b19f3
   frontend:
     repository: gabriel-arinez/homex-frontend
-    revision: 57c32d3aa2c2e46fbcc7136f6a90995b67c664ea
+    revision: deba1de244395dbdcb266f03026630b403768d71
   nlp:
     repository: gabriel-arinez/homex-nlp
-    revision: 55236655956c2f488af645aafa657db39af66b60
+    revision: 8d1750b2d1d26f6d90da10603216b7926bdaf820
     package_version: 0.1.0
     artifact: homex_nlp-0.1.0-py3-none-any.whl
     sha256: cfacc3a987f6158f43934cb64304fa50ea3e577cfa576f3db1e6d2a9576d19e6
@@ -21,9 +21,9 @@ runtime:
     version: Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120
     sha256: 3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671
   images:
-    api: homex/backend:d02-0659dc5
-    worker: homex/backend:d02-0659dc5
-    frontend_proxy: homex/frontend-proxy:d02-57c32d3
+    api: homex/backend:d04-9ce7230
+    worker: homex/backend:d04-9ce7230
+    frontend_proxy: homex/frontend-proxy:d04-deba1de
   postgresql: 17.6-alpine3.22
   redis: 8.2.1-alpine3.22
   expected_migrations:

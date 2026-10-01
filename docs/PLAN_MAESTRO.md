@@ -59,11 +59,11 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 - D01 cerrada;
 - D02 cerrada y fusionada en `main` (`37e03f93d7093e53e0db30f7182f361944da30aa`);
 - la antigua rama `feat/d03-r2-media` **no fue fusionada** y queda supersedida por esta decisión;
-- D03 se redefine como persistencia productiva local de media;
+- D03 cerrada: persistencia productiva local de media validada y con CI verde;
 - el acceso productivo será privado mediante Cloudflare Zero Trust/Tunnel, sin exigir dominio público.
 
 Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
-backend F09.1 → D03 → D04.
+backend F09.1 y D03 cerrados; D04 es la siguiente fase.
 
 ---
 
@@ -661,7 +661,7 @@ docs/implementacion/D02_STAGING_PROXY.md.
 
 ---
 
-# D03 — Media persistente local de producción
+# D03 — Media persistente local de producción — CERRADA
 
 **Objetivo:** convertir la media local de staging en persistencia productiva durable, respaldable y
 servida por el mismo origen, sin depender de servicios cloud de objetos.
@@ -881,8 +881,8 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 | D00 | F08.4 | FE02 | F06 | CERRADA |
 | D01 | F08.4 | — | F06 | CERRADA |
 | D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
-| D03 | **F09.1** | FE08 | F09 | SIGUIENTE tras F09.1 |
-| D04 | F09.1 | FE08 | F09 | tras D03 |
+| D03 | **F09.1** | FE08 | F09 | CERRADA |
+| D04 | F09.1 | FE08 | F09 | SIGUIENTE |
 | D05 | F09.1 | FE08 | F09 | tras D04 |
 | D06 | F09.1 | FE08 | F09 | tras D05 |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
@@ -896,14 +896,9 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 Backend F09 ---------------------------- CERRADA
 Frontend FE08 -------------------------- CERRADA
 NLP F09 ------------------------------- CERRADA
-Deploy D00–D02 ------------------------ CERRADAS
-        |
-        v
-Backend F09.1
-storage productivo configurable/local
-        |
-        v
-D03 media local persistente
+Deploy D00–D03 ------------------------ CERRADAS
+Backend F09.1 ------------------------- CERRADA
+D03 media local persistente ------------ CERRADA
         |
         v
 D04 release candidate + Zero Trust/Tunnel

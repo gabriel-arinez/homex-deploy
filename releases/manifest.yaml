@@ -1,8 +1,8 @@
 schema_version: "1.0"
 release:
-  version: "0.4.0-d04-pre"
+  version: "0.4.0-d04-rc1"
   created_at: "2026-09-30T22:56:00-04:00"
-  status: baseline
+  status: candidate
 sources:
   backend:
     repository: gabriel-arinez/homex-backend
@@ -21,9 +21,9 @@ runtime:
     version: Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120
     sha256: 3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671
   images:
-    api: homex/backend:d04-9ce7230
-    worker: homex/backend:d04-9ce7230
-    frontend_proxy: homex/frontend-proxy:d04-deba1de
+    api: homex/backend:d04-9ce7230@sha256:b2ad3fd0d0efa9084cd1497923303aee6ee4276ab1f4a7fd05b58a0b7e020602
+    worker: homex/backend:d04-9ce7230@sha256:b2ad3fd0d0efa9084cd1497923303aee6ee4276ab1f4a7fd05b58a0b7e020602
+    frontend_proxy: homex/frontend-proxy:d04-deba1de@sha256:5aa0d6b2f67cd836df70a519d609930ebf95cec6f4d15373bbc71418bae01f8d
   postgresql: 17.6-alpine3.22
   redis: 8.2.1-alpine3.22
   expected_migrations:

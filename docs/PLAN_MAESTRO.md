@@ -1,7 +1,7 @@
 # Plan maestro de implementación, despliegue y operación — HOMEX Deploy
 
 **Fecha de revisión:** 30 de septiembre de 2026  
-**Versión del plan:** 1.1 — despliegue privado proporcional + media local persistente  
+**Versión del plan:** 1.2 — despliegue privado HTTPS + media local persistente  
 **Repositorio:** gabriel-arinez/homex-deploy  
 **Rama rectora:** main  
 **Repositorio recién inicializado:** commit 343f6eb390f4794a49f1bad1a242c1af2817ef0b  
@@ -36,7 +36,7 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 
 - F00–F06 cerradas;
 - artefacto NLP 0.1.0 fijable y contrato externo estable;
-- F09 de integración del sistema fusionada en `main` (`55236655956c2f488af645aafa657db39af66b60`);
+- F09 de integración del sistema cerrada; `main` actual: `8d1750b2d1d26f6d90da10603216b7926bdaf820`;
 - F10/F11 pendientes y dependientes principalmente de este repositorio.
 
 ## 1.2. homex-backend
@@ -44,13 +44,14 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 - F07.0–F07.7 cerradas;
 - F08.0–F08.4 cerradas;
 - F09 de integración con frontend cerrada en `main` (`0659dc553af15b2125fad9b4ac0579669916e77b`);
-- F09.1 redefine exclusivamente el proveedor productivo de media: filesystem inicial, S3 opcional;
+- F09.1 cerrada y fusionada en `main` (`9ce723048d98a3925be45d9c359a25e6be7b19f3`);
+- filesystem es el storage productivo inicial y S3 sigue opcional;
 - no cambia el esquema comercial ni el contrato de negocio.
 
 ## 1.3. homex-frontend
 
 - FE00–FE08 cerradas;
-- FE08 fusionada en `main` (`57c32d3aa2c2e46fbcc7136f6a90995b67c664ea`);
+- FE08 cerrada; `main` actual: `deba1de244395dbdcb266f03026630b403768d71`;
 - FE09 release/despliegue/piloto permanece pendiente y se coordina con D04–D08.
 
 ## 1.4. homex-deploy
@@ -59,7 +60,7 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 - D01 cerrada;
 - D02 cerrada y fusionada en `main` (`37e03f93d7093e53e0db30f7182f361944da30aa`);
 - la antigua rama `feat/d03-r2-media` **no fue fusionada** y queda supersedida por esta decisión;
-- D03 cerrada: persistencia productiva local de media validada y con CI verde;
+- D03 cerrada y fusionada en `main` (`b323f1f1fbf88fdc9d6ba658b8e138675bcb604b`);
 - el acceso productivo será privado mediante Cloudflare Zero Trust/Tunnel, sin exigir dominio público.
 
 Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
@@ -137,7 +138,7 @@ No debe duplicar Nginx, TLS, Compose o infraestructura productiva.
 - migración controlada de release;
 - health orchestration;
 - backup/restore;
-- R2 productivo y dominio público de media;
+- proveedor físico de media y sus mounts/configuración operativa (filesystem inicial, S3 opcional);
 - persistencia y volúmenes operativos;
 - limpieza independiente de audio temporal;
 - logging/monitorización;
@@ -166,7 +167,11 @@ PC / laptop / tablet / móvil autorizado
         (salida desde servidor)
                  |
                  v
-              Nginx
+       HTTPS homex.internal
+      (CA privada confiada)
+                 |
+                 v
+              Nginx TLS
         +--------+---------+
         |        |         |
         v        v         v
@@ -196,6 +201,8 @@ Reglas:
 - frontend es un build estático reproducible;
 - el túnel se establece de salida; no se exige IP pública ni port-forwarding;
 - no se exige dominio público para la primera instalación;
+- los dispositivos autorizados confían en una CA privada HOMEX para que el navegador disponga de
+  HTTPS/contexto seguro, necesario para micrófono y APIs sensibles;
 - S3/R2 queda como ruta de escalado opcional, no como dependencia de la release inicial.
 
 ### 4.1. Principio de escalabilidad
@@ -263,6 +270,7 @@ desde el entorno operativo y no los versiona.
 - directorio temporal NLP;
 - reverse proxy;
 - Cloudflare Tunnel/Zero Trust cuando D04 lo habilite;
+- TLS interno HOMEX (`homex.internal`) y rutas de certificados cuando D04 lo habilite;
 - logging.
 
 ## 6.3. Prohibiciones
@@ -340,6 +348,8 @@ Checks mínimos:
 Desde D04 se añade:
 
 - un dispositivo autorizado alcanza HOMEX mediante Zero Trust;
+- `https://homex.internal` presenta un certificado confiado por el dispositivo;
+- el navegador confirma contexto seguro y permite el flujo de micrófono;
 - un dispositivo/no identidad no autorizada no obtiene acceso;
 - la aplicación no necesita puerto público entrante en el servidor.
 
@@ -399,9 +409,13 @@ Nginx cubre:
 Cloudflare Zero Trust/Tunnel cubre el acceso remoto privado de PC, tablet y móvil autorizados.
 No se compra ni exige dominio para cumplir esta topología.
 
-HTTPS/HSTS sólo se exigen si la topología final presenta al navegador un hostname HTTPS real. No se
-simula HTTPS mediante headers sobre una ruta privada que no lo usa. La confidencialidad del enlace
-remoto debe estar demostrada por la red privada/túnel.
+D04 presenta al navegador `https://homex.internal` con un certificado firmado por la CA privada
+HOMEX. La raíz pública de confianza del proyecto es `homex-root-ca.crt`; su clave privada nunca
+sale del servidor. Cada dispositivo autorizado instala únicamente el certificado raíz.
+
+HTTPS es obligatorio aunque Cloudflare ya cifre el transporte: la captura de micrófono y otras APIs
+del navegador requieren un contexto seguro. Nginx termina TLS y envía
+`X-Forwarded-Proto=https`; Django mantiene redirección/cookies seguras activadas.
 
 ---
 
@@ -721,10 +735,14 @@ usuarios/dispositivos autorizados mediante Cloudflare Zero Trust/Tunnel.
 - generar `manifest.yaml`;
 - build limpio de imágenes;
 - Compose productivo;
+- generar una CA privada HOMEX y certificado TLS para `homex.internal`;
+- servir el origen productivo exclusivamente por HTTPS;
 - crear/configurar Cloudflare Tunnel;
-- publicar una ruta privada hacia el servicio HOMEX;
+- publicar una ruta privada hacia `homex.internal`;
+- instalar/confiar la CA HOMEX en dispositivos autorizados;
 - configurar enrolamiento/política Zero Trust para usuarios autorizados;
-- validar acceso desde escritorio y al menos un dispositivo móvil/tablet representativo;
+- validar contexto seguro, micrófono y acceso desde escritorio y al menos un dispositivo
+  móvil/tablet representativo;
 - mantener PostgreSQL y Redis sin exposición pública;
 - validar hosts/CORS/CSRF según origen real;
 - source maps según política;
@@ -1039,6 +1057,9 @@ Una fase está terminada únicamente cuando:
 - [ ] filesystem de media persistente fuera de contenedores;
 - [ ] `productos/` y `proformas/` operativos;
 - [ ] acceso mediante Zero Trust/Tunnel validado desde dispositivos autorizados;
+- [ ] `https://homex.internal` es confiable sin advertencias en PC y móvil/tablet;
+- [ ] flujo de micrófono funciona desde un dispositivo real;
+- [ ] la clave privada de la CA HOMEX permanece sólo en el servidor;
 - [ ] no existen puertos de datos expuestos públicamente;
 - [ ] headers/CSP coherentes con el endpoint real;
 - [ ] secretos externos;

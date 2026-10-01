@@ -75,8 +75,8 @@ def main() -> None:
 
     for fragment in (
         "2026.9.2",
-        "03f1f25d1cc93b9ad6c60569d44060bc4f17ed97075760ed8cfca4b12dcd68cc",
-        "3d97437c71848bd8df68041e12436b484a661d95073ea1937f01a845ce88faa3",
+        "ea2c9bb2d5017a796b64bf36e605d727accf76a5500014bb12952ce11ae1f932",
+        "39f23e7c55ce2c2e502a0b3e070b978bf69135b19246b5b7581dadb94cf2144d",
         "sha256sum --check --status",
     ):
         require(installer, fragment, "scripts/install_cloudflared.sh")

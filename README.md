@@ -9,7 +9,7 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 - D01 — runtime integrado backend + NLP: cerrada y verificada con CI remoto verde.
 - D02 — staging integrado y reverse proxy: cerrada y fusionada.
 - D03 — media persistente local: cerrada y validada.
-- D04 — release candidate integrada y acceso privado: siguiente fase.
+- D04 — release candidate integrada + HTTPS/acceso privado: en curso; automatización implementada, validación real de Cloudflare/dispositivos pendiente.
 - D05+ — recuperación, resiliencia, release y piloto pendientes.
 
 ## Staging D02
@@ -80,8 +80,9 @@ scripts/                       gates y operación
 
 ## Arquitectura productiva vigente
 
-La release inicial de HOMEX usa media persistente local servida por Nginx y acceso remoto privado
-mediante Cloudflare Zero Trust/Tunnel. No requiere comprar dominio ni provisionar R2.
+La release inicial de HOMEX usa media persistente local servida por Nginx HTTPS y acceso remoto
+privado mediante Cloudflare Zero Trust/Tunnel. `homex.internal` usa una CA privada HOMEX para que
+PC, tablet y móvil dispongan de contexto seguro sin comprar dominio ni provisionar R2.
 
-La rama histórica `feat/d03-r2-media` no fue fusionada y no representa el plan vigente. El trabajo
-continúa en `feat/d03-media-local`.
+La rama histórica `feat/d03-r2-media` no fue fusionada y no representa el plan vigente. D03 ya está
+fusionada; el trabajo actual continúa en `feat/d04-private-release-candidate`.

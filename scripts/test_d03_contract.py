@@ -33,7 +33,7 @@ def media_mount(service: dict) -> dict:
 
 
 def main() -> None:
-    production = (ROOT / "compose.production.yml").read_text()
+    production = (ROOT / "compose.d03-media.yml").read_text()
     nginx = (ROOT / "nginx/default.conf").read_text()
     env_text = (ROOT / ".env.example").read_text()
 
@@ -44,10 +44,10 @@ def main() -> None:
         "target: /var/lib/homex/media",
         "read_only: true",
     ):
-        require(production, fragment, "compose.production.yml")
+        require(production, fragment, "compose.d03-media.yml")
 
-    reject(production, "R2_ACCESS_KEY_ID:", "compose.production.yml")
-    reject(production, "R2_SECRET_ACCESS_KEY:", "compose.production.yml")
+    reject(production, "R2_ACCESS_KEY_ID:", "compose.d03-media.yml")
+    reject(production, "R2_SECRET_ACCESS_KEY:", "compose.d03-media.yml")
     require(nginx, "location ^~ /media/", "nginx/default.conf")
     require(nginx, "alias /var/lib/homex/media/;", "nginx/default.conf")
 
@@ -67,7 +67,7 @@ def main() -> None:
             "-f",
             "docker-compose.yml",
             "-f",
-            "compose.production.yml",
+            "compose.d03-media.yml",
             "--env-file",
             ".env.example",
             "--profile",

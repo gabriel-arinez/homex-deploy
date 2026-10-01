@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pruebas del contrato de releases: pending-* sólo es válido en baseline."""
+"""Pruebas del contrato de releases y referencias inmutables de imágenes."""
 
 from copy import deepcopy
 import json
@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 SCHEMA_PATH = Path("releases/manifest.schema.json")
 HASH = "a" * 64
 DIGESTED_IMAGE = f"ghcr.io/homex/service:0.1.0@sha256:{HASH}"
+SOURCE_TAGGED_IMAGE = "homex/service:d04-1a2b3c4"
 
 
 def base_manifest() -> dict:
@@ -56,6 +57,17 @@ def errors(validator: Draft202012Validator, document: dict) -> list:
     return sorted(validator.iter_errors(document), key=lambda error: list(error.path))
 
 
+def candidate_with(images: dict[str, str]) -> dict:
+    candidate = deepcopy(base_manifest())
+    candidate["release"]["status"] = "candidate"
+    candidate["runtime"]["asr_model"] = {
+        "version": "faster-whisper-small-v1",
+        "sha256": HASH,
+    }
+    candidate["runtime"]["images"] = images
+    return candidate
+
+
 def main() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
@@ -71,21 +83,37 @@ def main() -> None:
         if not errors(validator, invalid):
             raise SystemExit(f"{status} aceptó valores pending-*")
 
-    candidate = deepcopy(baseline)
-    candidate["release"]["status"] = "candidate"
-    candidate["runtime"]["asr_model"] = {"version": "faster-whisper-small-v1", "sha256": HASH}
-    candidate["runtime"]["images"] = {
-        "api": DIGESTED_IMAGE,
-        "worker": DIGESTED_IMAGE,
-        "frontend_proxy": DIGESTED_IMAGE,
-    }
-    if candidate_errors := errors(validator, candidate):
-        raise SystemExit(f"candidate inmutable válida rechazada: {candidate_errors}")
+    tagged = candidate_with(
+        {
+            "api": SOURCE_TAGGED_IMAGE,
+            "worker": SOURCE_TAGGED_IMAGE,
+            "frontend_proxy": SOURCE_TAGGED_IMAGE,
+        }
+    )
+    if tagged_errors := errors(validator, tagged):
+        raise SystemExit(f"candidate con tag derivado de SHA fue rechazada: {tagged_errors}")
 
-    no_digest = deepcopy(candidate)
-    no_digest["runtime"]["images"]["api"] = "ghcr.io/homex/api:0.1.0"
-    if not errors(validator, no_digest):
-        raise SystemExit("candidate aceptó imagen sin digest")
+    digested = candidate_with(
+        {
+            "api": DIGESTED_IMAGE,
+            "worker": DIGESTED_IMAGE,
+            "frontend_proxy": DIGESTED_IMAGE,
+        }
+    )
+    if digested_errors := errors(validator, digested):
+        raise SystemExit(f"candidate con digest de registry fue rechazada: {digested_errors}")
+
+    for mutable in (
+        "homex/service:latest",
+        "homex/service:0.4.0",
+        "homex/service:d04-main",
+        "homex/service:d04-123456",
+        "homex/service:d04-12345678",
+    ):
+        invalid = deepcopy(tagged)
+        invalid["runtime"]["images"]["api"] = mutable
+        if not errors(validator, invalid):
+            raise SystemExit(f"candidate aceptó referencia mutable/no contractual: {mutable}")
 
     bad_migration = deepcopy(baseline)
     bad_migration["runtime"]["expected_migrations"] = {"accounts": "backend-sha"}

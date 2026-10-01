@@ -34,7 +34,7 @@ state_file=/tmp/homex-d03-state.json
 token_file=/tmp/homex-d03-token.json
 
 run_compose() {
-  $compose -f docker-compose.yml -f compose.production.yml \
+  $compose -f docker-compose.yml -f compose.d03-media.yml \
     --project-name "$project" --env-file .env.example "$@"
 }
 

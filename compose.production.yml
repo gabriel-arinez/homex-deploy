@@ -3,23 +3,59 @@ x-production-environment: &production-environment
   HOMEX_MEDIA_STORAGE: ${HOMEX_MEDIA_STORAGE:-filesystem}
   HOMEX_MEDIA_ROOT: /var/lib/homex/media
   HOMEX_MEDIA_URL: /media/
-  HOMEX_HTTPS_ENABLED: ${HOMEX_HTTPS_ENABLED:-0}
+  HOMEX_HTTPS_ENABLED: ${HOMEX_HTTPS_ENABLED:-1}
 
 services:
+  postgres:
+    ports: !reset []
+    cpus: ${HOMEX_POSTGRES_CPUS:-1.5}
+    mem_limit: ${HOMEX_POSTGRES_MEMORY:-2g}
+
+  redis:
+    ports: !reset []
+    cpus: ${HOMEX_REDIS_CPUS:-0.5}
+    mem_limit: ${HOMEX_REDIS_MEMORY:-256m}
+
   migrate:
     environment: *production-environment
 
   api:
     environment: *production-environment
+    ports: !reset []
+    cpus: ${HOMEX_API_CPUS:-1.0}
+    mem_limit: ${HOMEX_API_MEMORY:-1g}
     volumes: !override
       - audio_temporal:/var/lib/homex/audio-temporal
       - type: bind
         source: ${HOMEX_MEDIA_HOST_PATH:?HOMEX_MEDIA_HOST_PATH is required}
         target: /var/lib/homex/media
       - ./releases/manifest.yaml:/release/manifest.yaml:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, urllib.request;
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production');
+          import django; django.setup();
+          from django.db import connection;
+          connection.ensure_connection();
+          connection.cursor().execute('SELECT 1');
+          request=urllib.request.Request(
+            'http://127.0.0.1:8000/api/v1/health/',
+            headers={'Host':'homex.internal','X-Forwarded-Proto':'https'}
+          );
+          urllib.request.urlopen(request, timeout=2).read()
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   worker:
     environment: *production-environment
+    cpus: ${HOMEX_WORKER_CPUS:-2.0}
+    mem_limit: ${HOMEX_WORKER_MEMORY:-3g}
     volumes: !override
       - audio_temporal:/var/lib/homex/audio-temporal
       - type: bind
@@ -27,12 +63,40 @@ services:
         target: /opt/homex/models/faster-whisper-small
         read_only: true
 
+  beat:
+    environment: *production-environment
+    cpus: 0.25
+    mem_limit: 256m
+
   frontend-proxy:
+    ports: !override
+      - "${HOMEX_PRIVATE_BIND:-127.0.0.1}:${HOMEX_PRIVATE_PORT:-443}:8443"
+    cpus: ${HOMEX_PROXY_CPUS:-0.5}
+    mem_limit: ${HOMEX_PROXY_MEMORY:-256m}
     volumes: !override
       - type: bind
         source: ${HOMEX_MEDIA_HOST_PATH:?HOMEX_MEDIA_HOST_PATH is required}
         target: /var/lib/homex/media
         read_only: true
+      - ./nginx/production.conf:/etc/nginx/conf.d/default.conf:ro
+      - type: bind
+        source: ${HOMEX_TLS_CERT_HOST_PATH:?HOMEX_TLS_CERT_HOST_PATH is required}
+        target: /etc/nginx/tls/tls.crt
+        read_only: true
+      - type: bind
+        source: ${HOMEX_TLS_KEY_HOST_PATH:?HOMEX_TLS_KEY_HOST_PATH is required}
+        target: /etc/nginx/tls/tls.key
+        read_only: true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q --no-check-certificate --spider
+          https://127.0.0.1:8443/ || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 
   publisher:
     environment: *production-environment

@@ -163,6 +163,21 @@ services:
     restart: unless-stopped
     networks: [data]
 
+  beat:
+    <<: *backend-image
+    profiles: [operations]
+    environment: *backend-environment
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO"]
+    volumes:
+      - audio_temporal:/var/lib/homex/audio-temporal
+    depends_on:
+      grant-runtime:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [data]
+
   frontend-proxy:
     image: homex/frontend-proxy:${HOMEX_FRONTEND_IMAGE_TAG:-d02-57c32d3}
     build:

@@ -73,8 +73,16 @@ jobs:
         run: |
           docker compose -f docker-compose.yml -f compose.production.yml \
             --env-file .env.production.example build --no-cache backend frontend-proxy
-          docker image inspect homex/backend:d04-9ce7230 --format 'D04_API_IMAGE_ID={{.Id}}'
-          docker image inspect homex/frontend-proxy:d04-deba1de --format 'D04_FRONTEND_IMAGE_ID={{.Id}}'
+          api_id=$(docker image inspect homex/backend:d04-9ce7230 --format '{{.Id}}')
+          frontend_id=$(docker image inspect homex/frontend-proxy:d04-deba1de --format '{{.Id}}')
+          echo "D04_API_IMAGE_ID=$api_id"
+          echo "D04_FRONTEND_IMAGE_ID=$frontend_id"
+          expected_api=$(awk '$1 == "api:" {print $2}' releases/manifest.yaml)
+          expected_worker=$(awk '$1 == "worker:" {print $2}' releases/manifest.yaml)
+          expected_frontend=$(awk '$1 == "frontend_proxy:" {print $2}' releases/manifest.yaml)
+          test "$expected_api" = "homex/backend:d04-9ce7230@$api_id"
+          test "$expected_worker" = "homex/backend:d04-9ce7230@$api_id"
+          test "$expected_frontend" = "homex/frontend-proxy:d04-deba1de@$frontend_id"
 
   integration:
     runs-on: ubuntu-latest

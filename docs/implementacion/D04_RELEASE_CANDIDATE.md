@@ -18,8 +18,10 @@ real de Cloudflare Zero Trust y acceso desde escritorio + móvil/tablet autoriza
 
 ## Release candidate
 
-`releases/manifest.yaml` define `0.4.0-d04-rc1` y fija fuentes, artefacto NLP, modelo ASR e IDs
-de las imágenes construidas por CI.
+`releases/manifest.yaml` define `0.4.0-d04-rc1` y fija fuentes, artefacto NLP, modelo ASR y tags
+de imágenes derivados de los SHA de fuente (`d04-<sha7>`). Los IDs locales de Docker se registran
+sólo como evidencia de build porque no son estables entre builds `--no-cache`. Si en el futuro se
+publican imágenes en un registry, el contrato también admite referencias por digest `@sha256:`.
 
 La topología productiva utiliza:
 

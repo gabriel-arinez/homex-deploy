@@ -6,11 +6,24 @@ x-production-environment: &production-environment
   HOMEX_HTTPS_ENABLED: ${HOMEX_HTTPS_ENABLED:-0}
 
 services:
+  postgres:
+    ports: !reset []
+    cpus: ${HOMEX_POSTGRES_CPUS:-1.5}
+    mem_limit: ${HOMEX_POSTGRES_MEMORY:-2g}
+
+  redis:
+    ports: !reset []
+    cpus: ${HOMEX_REDIS_CPUS:-0.5}
+    mem_limit: ${HOMEX_REDIS_MEMORY:-256m}
+
   migrate:
     environment: *production-environment
 
   api:
     environment: *production-environment
+    ports: !reset []
+    cpus: ${HOMEX_API_CPUS:-1.0}
+    mem_limit: ${HOMEX_API_MEMORY:-1g}
     volumes: !override
       - audio_temporal:/var/lib/homex/audio-temporal
       - type: bind
@@ -20,6 +33,8 @@ services:
 
   worker:
     environment: *production-environment
+    cpus: ${HOMEX_WORKER_CPUS:-2.0}
+    mem_limit: ${HOMEX_WORKER_MEMORY:-3g}
     volumes: !override
       - audio_temporal:/var/lib/homex/audio-temporal
       - type: bind
@@ -27,7 +42,16 @@ services:
         target: /opt/homex/models/faster-whisper-small
         read_only: true
 
+  beat:
+    environment: *production-environment
+    cpus: 0.25
+    mem_limit: 256m
+
   frontend-proxy:
+    ports: !override
+      - "${HOMEX_PRIVATE_BIND:-127.0.0.1}:${HOMEX_PRIVATE_PORT:-8080}:8080"
+    cpus: ${HOMEX_PROXY_CPUS:-0.5}
+    mem_limit: ${HOMEX_PROXY_MEMORY:-256m}
     volumes: !override
       - type: bind
         source: ${HOMEX_MEDIA_HOST_PATH:?HOMEX_MEDIA_HOST_PATH is required}

@@ -239,7 +239,7 @@
       "anyOf": [
         {
           "type": "string",
-          "pattern": "^.+:[^:@\\\\s]+@sha256:[0-9a-f]{64}$"
+          "pattern": "^.+:[^:@\\s]+@sha256:[0-9a-f]{64}$"
         },
         {
           "type": "string",

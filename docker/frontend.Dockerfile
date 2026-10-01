@@ -18,7 +18,8 @@ RUN test -n "$VITE_API_BASE_URL" \
     && find dist/assets -maxdepth 1 -type f \
         \( -name '*-????????.js' -o -name '*-????????.css' -o -name '*-????????.woff2' \) \
         | grep -q . \
-    && test -z "$(find dist/assets -maxdepth 1 -type f ! -name '*-????????.*' -print -quit)"
+    && test -z "$(find dist/assets -maxdepth 1 -type f ! -name '*-????????.*' -print -quit)" \
+    && test -z "$(find dist -type f -name '*.map' -print -quit)"
 
 FROM nginxinc/nginx-unprivileged:1.29.3-alpine3.22@sha256:5aea7cc516b419e3526f47dd1531be31a56a046cfe44754d94f9383e13e2ee99
 

@@ -4,11 +4,15 @@ set -eu
 compose=${COMPOSE_BIN:-docker compose}
 env_file=${D04_ENV_FILE:-.env.production.example}
 project=${D04_COMPOSE_PROJECT:-homex-d04-gate}
-base_url=${D04_BASE_URL:-http://homex.internal:8080}
+base_url=${D04_BASE_URL:-https://homex.internal}
 backend_context=${BACKEND_CONTEXT:-../homex-backend}
 frontend_context=${FRONTEND_CONTEXT:-../homex-frontend}
 media_dir=${D04_MEDIA_HOST_PATH:-/tmp/homex-d04-media}
 model_dir=${D04_ASR_MODEL_PATH:-/tmp/homex-d04-asr}
+tls_dir=${D04_TLS_DIR:-/tmp/homex-d04-tls}
+ca_cert="$tls_dir/homex-root-ca.crt"
+server_cert="$tls_dir/homex.internal.crt"
+server_key="$tls_dir/homex.internal.key"
 audio_fixture=${D04_AUDIO_FIXTURE:-/tmp/homex-d04-cotizacion.wav}
 playwright_config="$frontend_context/playwright.d04.config.ts"
 
@@ -33,10 +37,17 @@ fi
 mkdir -p "$media_dir" "$model_dir"
 chmod 0777 "$media_dir" "$model_dir"
 
+HOMEX_PRIVATE_HOSTNAME=homex.internal HOMEX_TLS_DIR="$tls_dir" \
+  HOMEX_NGINX_GID=101 HOMEX_TLS_FORCE=1 \
+  sh scripts/generate_internal_tls.sh
+
 export BACKEND_CONTEXT="$backend_context"
 export FRONTEND_CONTEXT="$frontend_context"
 export HOMEX_MEDIA_HOST_PATH="$media_dir"
 export ASR_MODEL_SOURCE="$model_dir"
+export HOMEX_TLS_CERT_HOST_PATH="$server_cert"
+export HOMEX_TLS_KEY_HOST_PATH="$server_key"
+export HOMEX_CA_CERT_HOST_PATH="$ca_cert"
 
 run_compose() {
   $compose -f docker-compose.yml -f compose.production.yml \
@@ -47,7 +58,7 @@ run_compose() {
 wait_url() {
   url=$1
   attempts=0
-  until curl --fail --silent --show-error "$url" >/dev/null 2>&1; do
+  until curl --fail --silent --show-error --cacert "$ca_cert" "$url" >/dev/null 2>&1; do
     attempts=$((attempts + 1))
     if [ "$attempts" -ge 90 ]; then
       echo "No quedó disponible: $url" >&2
@@ -93,6 +104,32 @@ wait_url "$base_url/api/v1/health/"
 run_compose exec -T api python scripts/preparar_integracion_frontend_f09.py
 
 cp scripts/playwright.d04.config.ts "$playwright_config"
+
+(
+  cd "$frontend_context"
+  D04_BASE_URL="$base_url" node <<'NODE'
+const { chromium } = require('playwright')
+
+;(async () => {
+  const browser = await chromium.launch({ headless: true })
+  const context = await browser.newContext({ ignoreHTTPSErrors: true })
+  const page = await context.newPage()
+  await page.goto(process.env.D04_BASE_URL + '/login', { waitUntil: 'networkidle' })
+  const secure = await page.evaluate(() => ({
+    secureContext: window.isSecureContext,
+    randomUUID: typeof crypto.randomUUID === 'function',
+  }))
+  await browser.close()
+  if (!secure.secureContext || !secure.randomUUID) {
+    throw new Error(`Origen D04 no es contexto seguro: ${JSON.stringify(secure)}`)
+  }
+  console.log('d04-browser-secure-context-ok')
+})().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})
+NODE
+)
 
 (
   cd "$frontend_context"

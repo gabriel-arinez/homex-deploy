@@ -8,8 +8,9 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 - D00 — baseline y contrato: cerrada.
 - D01 — runtime integrado backend + NLP: cerrada y verificada con CI remoto verde.
 - D02 — staging integrado y reverse proxy: cerrada y fusionada.
-- D03 — media persistente local: redefinida y en preparación.
-- D04+ — release privada, recuperación, resiliencia y piloto pendientes.
+- D03 — media persistente local: cerrada y validada.
+- D04 — release candidate integrada y acceso privado: siguiente fase.
+- D05+ — recuperación, resiliencia, release y piloto pendientes.
 
 ## Staging D02
 

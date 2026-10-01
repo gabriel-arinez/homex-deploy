@@ -3,7 +3,7 @@
 **Fecha:** 30 de septiembre de 2026  
 **Rama:** `feat/d03-media-local`  
 **Base:** `37e03f93d7093e53e0db30f7182f361944da30aa` (D02)  
-**Backend candidato F09.1:** `7ca7ce85dceea8e4c9c7a852a4ec787af9b958c7`
+**Backend candidato F09.1:** `9ce723048d98a3925be45d9c359a25e6be7b19f3`
 
 ## Objetivo
 

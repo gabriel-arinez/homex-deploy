@@ -132,8 +132,13 @@ def main() -> None:
         service = config["services"][service_name]
         deploy = service.get("deploy", {})
         limits = deploy.get("resources", {}).get("limits", {})
-        if not limits:
-            raise SystemExit(f"{service_name} no tiene límites CPU/RAM efectivos")
+        cpu = service.get("cpus") or limits.get("cpus")
+        memory = service.get("mem_limit") or limits.get("memory")
+        if not cpu or not memory:
+            raise SystemExit(
+                f"{service_name} no tiene límites CPU/RAM efectivos: "
+                f"cpus={cpu!r}, memory={memory!r}"
+            )
 
     print("d04-private-release-contract-ok")
 

@@ -66,7 +66,7 @@ def main() -> None:
 
     require(
         unit,
-        "tunnel --no-autoupdate --loglevel info run --token-file "
+        "--no-autoupdate tunnel run --token-file "
         "/etc/homex/cloudflared/tunnel-token",
         "systemd unit",
     )

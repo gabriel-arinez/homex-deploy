@@ -140,7 +140,12 @@ NODE
 )
 
 run_compose exec -T api python scripts/verificar_integracion_frontend_f09.py
-run_compose exec -T api python scripts/verificar_superficies_frontend_f09.py
+
+# Este verificador usa DRF APIClient en el mismo proceso, no el listener HTTPS real.
+# El transporte HTTPS ya quedó cubierto por Playwright; desactivar sólo el redirect
+# en este proceso evita convertir una prueba de documentos/media en una prueba de middleware.
+run_compose exec -T -e HOMEX_HTTPS_ENABLED=0 \
+  api python scripts/verificar_superficies_frontend_f09.py
 
 run_compose exec -T api python manage.py check
 run_compose exec -T api python manage.py makemigrations --check --dry-run

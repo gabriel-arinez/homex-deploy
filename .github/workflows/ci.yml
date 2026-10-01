@@ -165,6 +165,63 @@ jobs:
           D03_MEDIA_HOST_PATH: /tmp/homex-d03-media
         run: sh scripts/test_d03_media.sh
 
+  private-release-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          path: sources/backend
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-frontend
+          ref: deba1de244395dbdcb266f03026630b403768d71
+          path: sources/frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: npm
+          cache-dependency-path: sources/frontend/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: .cache/d04-asr
+          key: d04-faster-whisper-small-536b0662742c
+      - name: Install browser and deterministic audio dependencies
+        run: |
+          cd sources/frontend
+          npm ci
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng
+      - name: Configure private hostname for CI
+        run: echo '127.0.0.1 homex.internal' | sudo tee -a /etc/hosts
+      - name: Run D04 private release candidate gate
+        env:
+          BACKEND_CONTEXT: ./sources/backend
+          FRONTEND_CONTEXT: ./sources/frontend
+          D04_COMPOSE_PROJECT: homex-d04-ci
+          D04_MEDIA_HOST_PATH: /tmp/homex-d04-media
+          D04_ASR_MODEL_PATH: ${{ github.workspace }}/.cache/d04-asr
+        run: sh scripts/test_d04_candidate.sh
+      - name: Collect D04 logs on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.yml -f compose.production.yml \
+            --project-name homex-d04-ci --env-file .env.production.example \
+            --profile operations --profile build logs --no-color > /tmp/d04-compose.log || true
+      - name: Upload D04 evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d04-private-release-evidence
+          path: |
+            /tmp/d04-compose.log
+            sources/frontend/test-results/playwright-d04/
+          if-no-files-found: ignore
+          retention-days: 7
+
   secrets:
     runs-on: ubuntu-latest
     steps:

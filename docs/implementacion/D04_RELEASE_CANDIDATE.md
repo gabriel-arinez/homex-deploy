@@ -36,9 +36,11 @@ Cloudflare Tunnel
       |
 cloudflared host
       |
-127.0.0.1:8080
+127.0.0.1:443
       |
-Nginx
+Nginx TLS
+      |  certificado homex.internal
+      |  firmado por HOMEX Local Root CA
  ├── Vue
  ├── /api/  → Django
  └── /media/→ filesystem persistente
@@ -51,13 +53,31 @@ No se requiere dominio público.
 `compose.production.yml`:
 
 - elimina publicaciones de puertos de PostgreSQL, Redis y API;
-- publica únicamente Nginx en `127.0.0.1:8080`;
+- publica únicamente Nginx TLS en `127.0.0.1:443`;
 - conserva media bind RW en API y RO en Nginx;
 - fija settings Django de producción;
 - añade límites iniciales CPU/RAM;
 - incorpora `Celery beat` para scheduling operativo.
 
-El frontend se construye para `http://homex.internal:8080` y el Dockerfile rechaza source maps.
+El frontend se construye para `https://homex.internal` y el Dockerfile rechaza source maps.
+
+### Por qué D04 exige HTTPS aunque el túnel ya cifre el transporte
+
+La captura de voz depende de APIs de navegador que requieren un **contexto seguro**. El primer gate
+D04 sobre `http://homex.internal` reprodujo correctamente el flujo comercial, pero la vista de
+captura no llegó a montar porque ese hostname HTTP no es un contexto seguro para APIs como
+`crypto.randomUUID()` y el micrófono.
+
+Por ello D04 mantiene el acceso privado de Cloudflare, pero añade TLS en Nginx sin comprar dominio:
+
+- `scripts/generate_internal_tls.sh` crea una CA local HOMEX y un certificado para
+  `homex.internal`;
+- la clave privada de la CA y la clave del servidor quedan sólo en el host;
+- los dispositivos autorizados instalan únicamente `homex-root-ca.crt`;
+- Django usa `HOMEX_HTTPS_ENABLED=1` y Nginx envía `X-Forwarded-Proto=https`.
+
+Esto conserva coste externo recurrente cero y habilita correctamente micrófono/funciones seguras
+en PC, tablet y móvil.
 
 ## Cloudflare Tunnel
 
@@ -77,12 +97,13 @@ Runbook: `docs/private-access-cloudflare.md`.
 ## Gates automatizados
 
 - contratos staging D02 y media D03 continúan como regresión;
-- `scripts/test_d04_contract.py` valida puertos, origen privado, límites, settings, manifest,
-  cloudflared y ausencia de secretos;
+- `scripts/test_d04_contract.py` valida puertos, HTTPS privado, mounts TLS, límites, settings,
+  manifest, cloudflared y ausencia de secretos;
 - build productivo reconstruye API/worker + frontend/proxy sin cache y compara IDs con manifest;
-- `scripts/test_d04_candidate.sh` ejecuta la release productiva con PostgreSQL/Redis reales,
-  worker, Celery beat, ASR/NLP, Nginx y Playwright;
-- el E2E reutiliza el recorrido FE08 real: flujo comercial + captura de voz + HITL;
+- `scripts/test_d04_candidate.sh` genera TLS efímero de prueba y ejecuta la release productiva con
+  PostgreSQL/Redis reales, worker, Celery beat, ASR/NLP, Nginx HTTPS y Playwright;
+- el E2E valida primero `window.isSecureContext` y luego reutiliza el recorrido FE08 real:
+  flujo comercial + captura de voz + HITL;
 - `manage.py check` y `makemigrations --check --dry-run` corren dentro de la release;
 - se verifica ausencia de source maps y secretos en el bundle.
 
@@ -92,11 +113,14 @@ Para cerrar D04 faltan evidencias no simulables por CI sin credenciales/disposit
 
 1. crear tunnel remoto en la organización Cloudflare Zero Trust;
 2. crear ruta **Private hostname** para `homex.internal`;
-3. enrolar al menos un escritorio y un móvil/tablet con Cloudflare One Client;
-4. validar usuario/dispositivo autorizado;
-5. validar rechazo de un dispositivo o identidad no autorizada;
-6. registrar evidencia de tunnel saludable y acceso funcional;
-7. confirmar que detener `homex-cloudflared.service` corta el acceso remoto.
+3. generar la CA/certificado HOMEX en el servidor y conservar privada la clave de la CA;
+4. instalar y confiar `homex-root-ca.crt` en al menos un escritorio y un móvil/tablet;
+5. enrolar esos dispositivos con Cloudflare One Client;
+6. validar `https://homex.internal`, incluido permiso/grabación de micrófono;
+7. validar usuario/dispositivo autorizado;
+8. validar rechazo de un dispositivo o identidad no autorizada;
+9. registrar evidencia de tunnel saludable y acceso funcional;
+10. confirmar que detener `homex-cloudflared.service` corta el acceso remoto.
 
 No se almacenarán tokens, capturas con secretos ni credenciales en Git.
 

@@ -14,10 +14,10 @@ homex.internal
 y el origen local:
 
 ```text
-http://homex.internal:8080
+https://homex.internal
 ```
 
-El listener de Nginx permanece ligado a `127.0.0.1:8080` en el servidor. `cloudflared` corre en
+El listener de Nginx permanece ligado a `127.0.0.1:443` en el servidor. `cloudflared` corre en
 el host y es el único conector entre Cloudflare One y ese origen local.
 
 ## 1. Preparar el origen
@@ -31,6 +31,25 @@ curl -fsS http://homex.internal:8080/api/v1/health/
 ```
 
 El hostname debe resolver localmente a `127.0.0.1`.
+
+### 1.1. Generar TLS interno HOMEX
+
+Antes de levantar la release:
+
+```bash
+HOMEX_PRIVATE_HOSTNAME=homex.internal \
+sh scripts/generate_internal_tls.sh
+```
+
+Se crean en `/etc/homex/tls/`:
+
+- `homex-root-ca.key`: **privada del servidor; nunca copiarla a dispositivos**;
+- `homex-root-ca.crt`: certificado raíz que sí se instala en dispositivos autorizados;
+- `homex.internal.key`: clave privada del servidor;
+- `homex.internal.crt`: certificado HTTPS del servicio.
+
+La CA local evita comprar un dominio y permite que el navegador trate
+`https://homex.internal` como contexto seguro una vez que el dispositivo confía en la CA.
 
 ## 2. Instalar cloudflared fijado
 
@@ -88,7 +107,20 @@ No crear una Published Application y no asociar un dominio público.
 El servidor que ejecuta `cloudflared` debe poder resolver `homex.internal`; D04 lo resuelve a
 `127.0.0.1` mediante `/etc/hosts`.
 
-## 5. Enrolar dispositivos
+## 5. Confiar la CA HOMEX en los dispositivos
+
+Copiar **sólo** `/etc/homex/tls/homex-root-ca.crt` a cada PC/tablet/móvil autorizado e
+instalarlo como autoridad raíz de confianza.
+
+Después de instalarlo, abrir `https://homex.internal` no debe mostrar advertencias de
+certificado. Esta condición es obligatoria para usar grabación de voz en navegador.
+
+No copiar nunca:
+
+- `homex-root-ca.key`;
+- `homex.internal.key`.
+
+## 6. Enrolar dispositivos
 
 Instalar Cloudflare One Client en cada dispositivo autorizado y enrolarlo en la organización Zero
 Trust.
@@ -108,7 +140,7 @@ IPv6  2606:4700:0cf1:4000::/64
 En modo Split Tunnels **Include**, incluir esos rangos. En **Local Domain Fallback**, eliminar la
 entrada que capture `.internal` si existe, para que Gateway resuelva el hostname privado.
 
-## 6. Política de acceso
+## 7. Política de acceso
 
 Configurar reglas de enrolamiento y políticas Gateway/Zero Trust para que sólo usuarios y
 dispositivos autorizados puedan utilizar la ruta.
@@ -116,7 +148,7 @@ dispositivos autorizados puedan utilizar la ruta.
 D04 no considera suficiente que el tunnel esté "Healthy": debe probarse tanto un acceso permitido
 como un intento desde un dispositivo/identidad no autorizada.
 
-## 7. Validación manual obligatoria de D04
+## 8. Validación manual obligatoria de D04
 
 Desde escritorio autorizado:
 
@@ -124,7 +156,7 @@ Desde escritorio autorizado:
 http://homex.internal:8080
 ```
 
-Verificar login, navegación, API y media.
+Verificar candado/certificado confiable, login, navegación, API, media y una captura real de micrófono.
 
 Repetir desde al menos un móvil o tablet autorizado.
 
@@ -132,17 +164,18 @@ Luego comprobar:
 
 - PostgreSQL y Redis no tienen puertos publicados;
 - API no tiene puerto publicado al host;
-- sólo Nginx escucha en `127.0.0.1:8080`;
+- sólo Nginx escucha en `127.0.0.1:443`;
 - el acceso remoto deja de funcionar si se detiene `homex-cloudflared.service`;
 - un dispositivo no enrolado/no autorizado no puede alcanzar HOMEX.
 
-## 8. HTTPS
+## 9. HTTPS
 
-La topología D04 usa el túnel privado cifrado y un origen HTTP local. Por eso
-`HOMEX_HTTPS_ENABLED=0`.
+D04 usa HTTPS real en el navegador mediante una CA privada HOMEX. El túnel de Cloudflare protege
+el transporte remoto y Nginx presenta el certificado de `homex.internal`.
 
-Sólo activar `HOMEX_HTTPS_ENABLED=1` cuando la topología entregue realmente HTTPS al navegador y
-Django reciba correctamente `X-Forwarded-Proto=https`.
+`HOMEX_HTTPS_ENABLED=1` es obligatorio en producción D04. Los clientes deben confiar en
+`homex-root-ca.crt`; aceptar manualmente una advertencia de certificado no constituye evidencia
+válida de cierre.
 
 ## Fuentes de operación
 

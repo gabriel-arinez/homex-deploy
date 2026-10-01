@@ -1,4 +1,4 @@
-# D03 — Media persistente local de producción
+# D03 — Media persistente local de producción — CERRADA
 
 **Fecha:** 30 de septiembre de 2026  
 **Rama:** `feat/d03-media-local`  
@@ -84,3 +84,36 @@ D03 se declara cerrada sólo cuando:
 - recreación conserva media;
 - borrado no deja huérfanos;
 - CI remoto de la rama está verde.
+
+
+## Evidencia remota de cierre
+
+Backend F09.1 fue fusionado en `main` mediante PR #6:
+
+- merge commit: `9ce723048d98a3925be45d9c359a25e6be7b19f3`;
+- CI de `main`: run `36808266902` — **success**.
+
+D03 fue validada sobre ese backend fusionado:
+
+- commit D03 validado: `6f5f198818a50bd0d1e51725feb68b2554a1ce45`;
+- CI deploy: run `36808299651` — **success**.
+
+Jobs verdes de deploy:
+
+- `compose-config`;
+- `yaml`;
+- `release-contract`;
+- `asr-contract`;
+- `build`;
+- `integration`;
+- `staging-integration`;
+- `media-local-integration`;
+- `secrets`.
+
+El gate `media-local-integration` confirmó carga de producto, variantes WebP, adjunto de proforma,
+persistencia tras recreación de contenedores, lectura vía Nginx y eliminación sin huérfanos.
+
+## Resultado final
+
+D03 queda cerrada. El siguiente trabajo de `homex-deploy` es **D04 — Release candidate integrada
+y acceso privado**.

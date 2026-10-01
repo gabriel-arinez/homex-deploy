@@ -166,13 +166,14 @@ sudo systemctl --no-pager --full status homex-cloudflared.service
 
 ## 6. Crear la ruta de hostname
 
-En **Networking > Routes**:
+En **Networking > Tunnels**:
 
-1. **Create route**;
-2. tipo **Tunnel Hostname**;
-3. seleccionar el tunnel `homex`;
-4. Hostname: `homex.internal`;
-5. crear la ruta.
+1. abrir el tunnel `homex`;
+2. ir a la pestaña **Routes**;
+3. seleccionar **Add route**;
+4. elegir **Private hostname**;
+5. Hostname: `homex.internal`;
+6. guardar la ruta.
 
 No usar **Published application** y no asociar un dominio público.
 
@@ -181,12 +182,13 @@ No usar **Published application** y no asociar un dominio público.
 En **Zero Trust > Team & Resources > Devices > Device profiles > General profiles**, abrir el
 perfil usado por HOMEX.
 
-Para **Split Tunnels**:
+Para **Split Tunnels**, mantener los rangos iniciales resueltos por defecto. Las versiones actuales
+del Cloudflare One Client administran automáticamente el rango IPv4
+`172.64.128.0/20` y el bloque IPv6 de Cloudflare requerido por hostname routing; no hace falta
+añadirlos manualmente en una configuración normal.
 
-- si se usa modo **Include**, incluir:
-  - IPv4: `172.64.128.0/20`;
-  - IPv6: `2606:4700:0cf1:4000::/64`;
-- si se usa modo **Exclude**, asegurarse de que esos rangos no queden excluidos.
+Si la cuenta usa un rango IPv4 inicial personalizado, ese rango sí debe enviarse por Cloudflare One
+Client. Añadir manualmente los rangos por defecto sólo se usa como medida de diagnóstico.
 
 En **Local Domain Fallback**, eliminar la entrada que capture el TLD `internal` si existe. La
 consulta de `homex.internal` debe llegar a Cloudflare Gateway para que el hostname route funcione.

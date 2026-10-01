@@ -19,7 +19,7 @@ real de Cloudflare Zero Trust y acceso desde escritorio + móvil/tablet autoriza
 ## Release candidate
 
 `releases/manifest.yaml` define `0.4.0-d04-rc1` y fija fuentes, artefacto NLP, modelo ASR y tags
-de imágenes derivados de los SHA de fuente (`d04-<sha7>`). Los IDs locales de Docker se registran
+de imágenes derivados de los SHA de fuente (`d04-<sha7>`). Los IDs locales de Docker se observan
 sólo como evidencia de build porque no son estables entre builds `--no-cache`. Si en el futuro se
 publican imágenes en un registry, el contrato también admite referencias por digest `@sha256:`.
 
@@ -99,7 +99,7 @@ Runbook: `docs/private-access-cloudflare.md`.
 - contratos staging D02 y media D03 continúan como regresión;
 - `scripts/test_d04_contract.py` valida puertos, HTTPS privado, mounts TLS, límites, settings,
   manifest, cloudflared y ausencia de secretos;
-- build productivo reconstruye API/worker + frontend/proxy sin cache y compara IDs con manifest;
+- build productivo reconstruye API/worker + frontend/proxy sin cache y verifica que los tags `d04-<sha7>` coincidan con el manifest;
 - `scripts/test_d04_candidate.sh` genera TLS efímero de prueba y ejecuta la release productiva con
   PostgreSQL/Redis reales, worker, Celery beat, ASR/NLP, Nginx HTTPS y Playwright;
 - el E2E valida primero `window.isSecureContext` y luego reutiliza el recorrido FE08 real:

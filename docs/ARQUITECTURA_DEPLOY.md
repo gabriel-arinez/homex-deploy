@@ -9,7 +9,7 @@ reescribir el dominio.
 ## Topología productiva
 
 ```text
-PC / laptop / tablet / móvil
+PC / laptop / tablet / móvil autorizado
         |
   Cloudflare One Client
         |
@@ -18,35 +18,44 @@ PC / laptop / tablet / móvil
  Cloudflare Tunnel
         |
         v
-      Nginx
-   +----+-----+---------+
-   |          |         |
-  Vue       /api/     /media/
-              |          |
-           Django    media host
-              |
-        +-----+------+
-        |            |
-   PostgreSQL      Redis
-                     |
-                   Worker
-                ASR + homex-nlp
+https://homex.internal
+  CA privada HOMEX
+        |
+        v
+    Nginx TLS
+ +------+-------+---------+
+ |              |         |
+Vue           /api/     /media/
+                |          |
+             Django    media host
+                |
+          +-----+------+
+          |            |
+     PostgreSQL      Redis
+                       |
+                  Worker + Beat
+                   ASR + NLP
 ```
 
 El túnel es saliente desde el servidor. La primera instalación no requiere IP pública,
 port-forwarding ni dominio público.
 
-## Fuentes fijadas antes de D03
+HTTPS sí es obligatorio en D04: el navegador necesita un contexto seguro para micrófono,
+`crypto.randomUUID()` y otras APIs sensibles. HOMEX lo resuelve con una CA privada instalada sólo
+en los dispositivos autorizados.
+
+## Fuentes de la release candidate D04
 
 | Componente | Revisión/versión |
 | --- | --- |
-| backend | `0659dc553af15b2125fad9b4ac0579669916e77b` + F09.1 para storage |
-| frontend | `57c32d3aa2c2e46fbcc7136f6a90995b67c664ea` |
-| NLP | integración `55236655956c2f488af645aafa657db39af66b60` |
+| backend | `9ce723048d98a3925be45d9c359a25e6be7b19f3` |
+| frontend | `deba1de244395dbdcb266f03026630b403768d71` |
+| NLP source | `8d1750b2d1d26f6d90da10603216b7926bdaf820` |
 | NLP runtime | `0.1.0` |
-| ASR | snapshot fijado por manifest |
+| ASR | `Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120` |
+| release | `0.4.0-d04-rc1` |
 
-D00–D02 permanecen como baseline de construcción, runtime y staging.
+D00–D03 permanecen como baseline cerrado. D04 ensambla la primera topología productiva privada.
 
 ## Persistencia
 
@@ -72,10 +81,28 @@ proformas/
 La instalación inicial usa Django `FileSystemStorage`. El frontend sólo consume las URLs devueltas
 por API. Un cambio futuro a S3/R2 no modifica tablas, endpoints ni componentes Vue.
 
-## Red
+## HTTPS interno
 
-La red de datos Compose mantiene PostgreSQL/Redis aislados. Nginx es el único punto de entrada de la
-aplicación. D04 añade Cloudflare Tunnel y políticas Zero Trust para los dispositivos autorizados.
+Nginx es el único listener de aplicación publicado al host y queda ligado a
+`127.0.0.1:443`. Dentro del contenedor escucha en `8443`.
+
+`scripts/generate_internal_tls.sh` administra:
+
+- `homex-root-ca.key`: clave de CA que permanece exclusivamente en el servidor;
+- `homex-root-ca.crt`: raíz que se instala como confiable en los dispositivos autorizados;
+- `homex.internal.key` y `homex.internal.crt`: identidad TLS del servidor.
+
+Django usa `HOMEX_HTTPS_ENABLED=1`; Nginx envía `X-Forwarded-Proto=https`.
+
+## Red y acceso privado
+
+La red Compose mantiene PostgreSQL/Redis aislados y no publica la API. Cloudflare Tunnel conecta de
+salida desde el servidor y enruta el hostname privado `homex.internal` hacia el listener local.
+
+Los dispositivos deben cumplir ambas condiciones:
+
+1. estar autorizados/enrolados en Cloudflare Zero Trust;
+2. confiar en `homex-root-ca.crt`.
 
 No se compra un dominio sólo para habilitar el despliegue privado.
 
@@ -87,7 +114,8 @@ La unidad mínima de backup es:
 2. directorio de media;
 3. manifest/configuración no secreta de release.
 
-Redis y audio no se restauran.
+Redis y audio no se restauran. Las claves privadas TLS son secretos operativos y se respaldarán
+según la política definida en D05, separadas de los datos de aplicación.
 
 La prueba de D05 destruye y reconstruye tanto DB como media antes de aceptar el backup.
 
@@ -100,6 +128,7 @@ Para la carga esperada se priorizan:
 - Nginx sirviendo binarios sin pasar cada GET por Django;
 - PostgreSQL local al backend;
 - polling operativo ligero en lugar de infraestructura push prematura;
+- límites iniciales de CPU/RAM proporcionales;
 - SSD y espacio de disco monitorizado.
 
 ## Escalabilidad

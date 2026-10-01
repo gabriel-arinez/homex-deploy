@@ -27,7 +27,7 @@ En el servidor HOMEX:
 ```bash
 echo '127.0.0.1 homex.internal' | sudo tee -a /etc/hosts
 getent hosts homex.internal
-curl -fsS http://homex.internal:8080/api/v1/health/
+curl --cacert /etc/homex/tls/homex-root-ca.crt -fsS https://homex.internal/api/v1/health/
 ```
 
 El hostname debe resolver localmente a `127.0.0.1`.
@@ -153,7 +153,7 @@ como un intento desde un dispositivo/identidad no autorizada.
 Desde escritorio autorizado:
 
 ```text
-http://homex.internal:8080
+https://homex.internal
 ```
 
 Verificar candado/certificado confiable, login, navegación, API, media y una captura real de micrófono.

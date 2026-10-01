@@ -1,7 +1,7 @@
 # Plan maestro de implementación, despliegue y operación — HOMEX Deploy
 
-**Fecha de revisión:** 25 de septiembre de 2026  
-**Versión del plan:** 1.0  
+**Fecha de revisión:** 30 de septiembre de 2026  
+**Versión del plan:** 1.1 — despliegue privado proporcional + media local persistente  
 **Repositorio:** gabriel-arinez/homex-deploy  
 **Rama rectora:** main  
 **Repositorio recién inicializado:** commit 343f6eb390f4794a49f1bad1a242c1af2817ef0b  
@@ -30,92 +30,40 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 
 ---
 
-# 1. Auditoría de estado al crear este plan
-
-La planificación de deploy se construye sobre el estado real de los repositorios al 25 de septiembre de 2026, no sobre una secuencia hipotética.
+# 1. Estado coordinado al 30 de septiembre de 2026
 
 ## 1.1. homex-nlp
 
-Estado confirmado en main:
-
-- F00–F06 implementadas y fusionadas;
-- versión de integración homex-nlp 0.1.0;
-- contrato externo v1;
-- paquete preparado para consumo del backend;
-- CI de main verde en el commit b5fe2921320c9031f6d44dc5c91a18411daa393e;
-- la antigua persistencia SQLite no es parte de la arquitectura activa;
-- el paquete NLP no es autoridad de negocio, permisos ni persistencia comercial.
-
-Para deploy, la fase NLP que importa como precondición técnica es F06.
-
-Las fases F07–F11 descritas por el plan NLP son fases coordinadas del sistema. En particular, F10 corresponde a despliegue reproducible y recuperación y será satisfecha principalmente mediante este repositorio.
+- F00–F06 cerradas;
+- artefacto NLP 0.1.0 fijable y contrato externo estable;
+- F09 de integración del sistema fusionada en `main` (`55236655956c2f488af645aafa657db39af66b60`);
+- F10/F11 pendientes y dependientes principalmente de este repositorio.
 
 ## 1.2. homex-backend
 
-Estado confirmado en main:
-
 - F07.0–F07.7 cerradas;
 - F08.0–F08.4 cerradas;
-- F08 está formalmente cerrada con PostgreSQL, Redis y worker real;
-- media persistente F07.7 cerrada;
-- Cloudflare R2 quedó definido como proveedor productivo, pero su provisión real pertenece a infraestructura;
-- auth/me y capabilities están integrados en main;
-- el contrato de listado, búsqueda, filtros y paginación requerido por FE03 está integrado en main;
-- CI de main verde en adb949268277da4361f37c96b786c5cdd0265750.
-
-Por tanto:
-
-- F09 — integración con frontend está en curso;
-- F10 — despliegue y recuperación no está cerrada;
-- F11 — piloto y cierre no está cerrada.
-
-Este repositorio será la principal fuente de evidencia para cerrar backend F10.
+- F09 de integración con frontend cerrada en `main` (`0659dc553af15b2125fad9b4ac0579669916e77b`);
+- F09.1 redefine exclusivamente el proveedor productivo de media: filesystem inicial, S3 opcional;
+- no cambia el esquema comercial ni el contrato de negocio.
 
 ## 1.3. homex-frontend
 
-Estado confirmado en main:
-
-- FE00 cerrada;
-- FE01 cerrada;
-- FE02 cerrada;
-- CI de main verde en fff381b52d0c7e4bad8cec6749caf30ee098e72d.
-
-Existe la rama feat/fe03-clientes-productos con el commit:
-
-- 99a327ece01703633bfe3964109f927ef5a6053f — FE03 clientes y catálogo visual.
-
-Sin embargo, esa rama está divergida respecto de main y FE03 no se considera cerrada desde el punto de vista de este plan hasta que:
-
-- se actualice con el contrato backend vigente;
-- sus gates vuelvan a pasar;
-- CI remoto esté verde;
-- se fusione a main;
-- exista evidencia final de cierre.
-
-Por tanto, FE04–FE09 permanecen pendientes.
+- FE00–FE08 cerradas;
+- FE08 fusionada en `main` (`57c32d3aa2c2e46fbcc7136f6a90995b67c664ea`);
+- FE09 release/despliegue/piloto permanece pendiente y se coordina con D04–D08.
 
 ## 1.4. homex-deploy
 
-Estado confirmado:
+- D00 cerrada;
+- D01 cerrada;
+- D02 cerrada y fusionada en `main` (`37e03f93d7093e53e0db30f7182f361944da30aa`);
+- la antigua rama `feat/d03-r2-media` **no fue fusionada** y queda supersedida por esta decisión;
+- D03 cerrada: persistencia productiva local de media validada y con CI verde;
+- el acceso productivo será privado mediante Cloudflare Zero Trust/Tunnel, sin exigir dominio público.
 
-- un único commit inicial;
-- README y .env.example básicos;
-- docker-compose.yml vacío;
-- nginx/default.conf vacío;
-- docs/ARQUITECTURA_DEPLOY.md vacío;
-- este PLAN_MAESTRO.md era un placeholder vacío;
-- no existe todavía CI;
-- no existen imágenes;
-- no existe manifiesto de release;
-- no existe backup/restore;
-- no existe observabilidad;
-- no existe entorno integrado reproducible.
-
-Conclusión de la auditoría:
-
-**Deploy puede comenzar ahora. No debe esperar a FE09.**
-
-D00–D03 pueden ejecutarse mientras frontend continúa FE03–FE08. Las fases de release integrado D04 en adelante sí dependen de que frontend y backend hayan alcanzado sus respectivos puntos de integración.
+Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
+backend F09.1 y D03 cerrados; D04 es la siguiente fase.
 
 ---
 
@@ -204,66 +152,62 @@ Este repositorio no contiene modelos ORM, reglas de permisos, cálculos comercia
 
 # 4. Arquitectura objetivo
 
-La topología productiva objetivo es:
+La instalación inicial se dimensiona para un equipo pequeño, de uso interno, con crecimiento
+moderado sin rehacer reglas de negocio.
 
 ~~~text
-Internet
-   |
-   v
-Reverse proxy / TLS
-   |
-   +---- / ----------------------> Vue estático
-   |
-   +---- /api/... ---------------> Django/DRF API
-                                      |
-                                      +---- PostgreSQL
-                                      |
-                                      +---- Redis
-                                      |
-                                      +---- Cloudflare R2
-                                      |
-                                      +---- temporales privados NLP
-                                                |
-                                                v
-Redis <------------------------- publicador/reconciliador
-  |
-  v
-Worker Django/Celery
-  |
-  +---- ASR
-  |
-  +---- homex-nlp fijado por versión
-  |
-  +---- PostgreSQL
-~~~
-
-Media pública persistente:
-
-~~~text
-Vue/API
-   |
-   +---- URLs públicas estables ----> media.<dominio>
-                                        |
-                                        v
-                              Cloudflare R2 Standard
-                              bucket: homex-public-media
-                              prefijos:
-                              - productos/
-                              - proformas/
+PC / laptop / tablet / móvil autorizado
+                 |
+          Cloudflare One Client
+                 |
+          Zero Trust privado
+                 |
+       Cloudflare Tunnel
+        (salida desde servidor)
+                 |
+                 v
+              Nginx
+        +--------+---------+
+        |        |         |
+        v        v         v
+      Vue      /api/     /media/
+               |          |
+               v          v
+             Django   filesystem persistente
+               |
+        +------+------+
+        |             |
+   PostgreSQL       Redis
+                      |
+                    Worker
+                 ASR + homex-nlp
 ~~~
 
 Reglas:
 
 - PostgreSQL es la autoridad comercial;
-- Redis no es fuente de verdad;
-- R2 contiene binarios persistentes de media pública;
-- PostgreSQL conserva keys/metadatos, no binarios;
-- audio NLP es temporal, privado y excluido de backups;
-- ningún volumen Docker productivo se usa como media comercial persistente;
-- API y worker usan la misma release de backend;
-- el worker consume una versión exacta de homex-nlp;
-- frontend se sirve como build estático;
-- producción no depende de repositorios Git montados dentro de contenedores.
+- Redis es reconstruible y no es fuente de verdad;
+- la media comercial vive inicialmente en filesystem persistente del host, no en la capa efímera
+  del contenedor;
+- PostgreSQL conserva keys/metadatos, nunca binarios;
+- Nginx sirve `/media/` sólo a través del perímetro privado;
+- el audio NLP es temporal, privado, separado y excluido de backups;
+- API y worker usan la misma release backend;
+- frontend es un build estático reproducible;
+- el túnel se establece de salida; no se exige IP pública ni port-forwarding;
+- no se exige dominio público para la primera instalación;
+- S3/R2 queda como ruta de escalado opcional, no como dependencia de la release inicial.
+
+### 4.1. Principio de escalabilidad
+
+Escalar no significa rediseñar el sistema. El orden previsto es:
+
+1. aumentar recursos del servidor si la carga lo exige;
+2. admitir más dispositivos/usuarios dentro de la red privada;
+3. mover media a S3/R2 si capacidad, disponibilidad o backup lo justifican;
+4. mover PostgreSQL/worker a infraestructura dedicada sólo si las métricas lo requieren.
+
+La API, las keys de media y los modelos comerciales no cambian entre los pasos 1–3.
 
 ---
 
@@ -303,55 +247,55 @@ Está prohibido definir producción con main, latest u otra referencia flotante 
 
 ## 6.1. Regla principal
 
-.env.example documenta nombres y semántica, nunca secretos reales.
-
-Producción debe inyectar secretos desde el mecanismo del entorno de despliegue. Ningún secreto se versiona.
+`.env.example` documenta nombres y semántica, nunca secretos reales. Producción inyecta secretos
+desde el entorno operativo y no los versiona.
 
 ## 6.2. Familias mínimas
-
-El contrato final de variables se obtiene de los repositorios fuente durante D00. Debe cubrir, como mínimo:
 
 - Django;
 - PostgreSQL;
 - Redis/Celery;
-- R2/S3 compatible;
-- dominio de media;
+- `HOMEX_MEDIA_STORAGE`;
+- `HOMEX_MEDIA_ROOT` / `HOMEX_MEDIA_HOST_PATH` para filesystem;
+- variables S3/R2 únicamente si se activa ese backend;
 - CORS/CSRF/hosts;
-- frontend API base cuando realmente sea necesaria en build/runtime;
 - rutas/modelos ASR;
 - directorio temporal NLP;
-- configuración de proxy/TLS;
+- reverse proxy;
+- Cloudflare Tunnel/Zero Trust cuando D04 lo habilite;
 - logging.
-
-No se crearán nombres alternativos en deploy si ya existe un nombre contractual en la aplicación.
 
 ## 6.3. Prohibiciones
 
-- secretos en Git;
-- secretos dentro del bundle Vue;
-- secrets ARG/ENV permanentes en capas de imagen;
-- credenciales R2 expuestas al navegador;
-- contraseña PostgreSQL dentro de compose versionado;
-- usar un único usuario PostgreSQL con privilegios de propietario para runtime si backend ya define separación de roles.
+- secretos en Git o bundle Vue;
+- credenciales de storage en navegador;
+- token de Tunnel versionado;
+- contraseña PostgreSQL real en compose;
+- path físico del host expuesto por API;
+- exigir variables S3/R2 cuando `HOMEX_MEDIA_STORAGE=filesystem`.
 
 ---
 
 # 7. Persistencia y volúmenes
 
-Persistencia productiva permitida:
+Persistencia productiva:
 
 - PostgreSQL: volumen persistente y respaldado;
-- modelos ASR: artefacto preinstalado o volumen/versionado de solo lectura, según cierre de D01;
-- certificados si la plataforma elegida los requiere localmente.
+- media comercial: directorio del host definido por `HOMEX_MEDIA_HOST_PATH`, montado en API como
+  lectura/escritura y en Nginx como sólo lectura;
+- modelo ASR: artefacto fijado y montado read-only.
 
 Persistencia no autoritativa:
 
-- Redis: reconstruible; no sustituye outbox/PostgreSQL;
-- temporales NLP: volumen/directorio privado y efímero, excluido de backup;
-- cachés de build: nunca parte de la release;
-- frontend: imagen inmutable, sin volumen mutable de código.
+- Redis;
+- audio/temporales NLP;
+- cachés de build;
+- frontend estático dentro de la imagen.
 
-R2 es almacenamiento externo y no un volumen Docker.
+La media debe sobrevivir a `docker compose down`, recreación de API/Nginx y actualización de
+release. No se admite depender del writable layer de un contenedor.
+
+S3/R2 es una alternativa futura y no participa en el backup de la instalación filesystem.
 
 ---
 
@@ -378,27 +322,28 @@ Si una migración no es compatible con rollback de aplicación, la documentació
 
 # 9. Health, readiness y smoke
 
-D00 debe inventariar los checks reales del backend.
-
-Si falta un endpoint que deba reflejar estado interno real, se implementa en homex-backend antes de declararlo disponible desde deploy.
-
-Checks mínimos del sistema:
+Checks mínimos:
 
 - reverse proxy responde;
-- frontend entrega index/assets;
-- fallback SPA funciona;
-- API liveness;
-- API readiness con dependencias necesarias;
+- Vue entrega index/assets y fallback SPA;
+- `/api/` llega al backend;
+- `/media/` sirve una variante real;
+- API liveness/readiness;
 - PostgreSQL healthy;
 - Redis healthy;
 - worker disponible;
 - migraciones en versión esperada;
-- flujo API autenticado mínimo;
-- lectura/escritura R2 de prueba en entorno no productivo;
-- ruta de media pública accesible;
+- flujo autenticado mínimo;
+- directorio de media existe, es escribible por API y legible por Nginx;
 - ausencia de secretos en respuestas.
 
-Los checks de health no deben ejecutar operaciones comerciales irreversibles.
+Desde D04 se añade:
+
+- un dispositivo autorizado alcanza HOMEX mediante Zero Trust;
+- un dispositivo/no identidad no autorizada no obtiene acceso;
+- la aplicación no necesita puerto público entrante en el servidor.
+
+Los healthchecks no ejecutan operaciones comerciales irreversibles.
 
 ---
 
@@ -406,58 +351,57 @@ Los checks de health no deben ejecutar operaciones comerciales irreversibles.
 
 ## 10.1. PostgreSQL
 
-Debe existir:
+Debe existir backup verificable, política de retención, restore a instancia limpia y smoke posterior.
 
-- script de backup;
-- verificación del archivo generado;
-- política de retención;
-- restore a una instancia limpia;
-- smoke posterior al restore;
-- registro de fecha, versión y migración;
-- documentación de RPO/RTO cuando la decisión de negocio exista.
+## 10.2. Media persistente
 
-## 10.2. R2
+El backup de la release inicial incluye el contenido de `HOMEX_MEDIA_HOST_PATH`.
 
-El backup PostgreSQL no copia binarios de R2.
+Debe conservar:
 
-Debe documentarse:
+- `productos/`;
+- `proformas/`;
+- estructura de keys;
+- permisos suficientes para restaurar;
+- checksum/manifiesto de los archivos respaldados.
 
-- que PostgreSQL contiene keys/metadatos;
-- cómo verificar referencias DB ↔ R2;
-- qué hacer ante referencia huérfana;
-- qué hacer ante objeto faltante;
-- cómo validar consistencia después de restore.
+Después del restore se valida coherencia entre referencias PostgreSQL y archivos. Deben detectarse
+referencias huérfanas y archivos no referenciados.
 
 ## 10.3. Audio NLP
 
-El audio temporal:
+Nunca entra en backup, snapshots persistentes ni recuperación histórica.
 
-- no entra en backup;
-- no entra en snapshots persistentes;
-- no se recupera como archivo histórico;
-- tiene limpieza independiente del worker de inferencia.
+## 10.4. Unidad de recuperación
+
+Una copia productiva se considera válida sólo si permite reconstruir conjuntamente:
+
+1. PostgreSQL;
+2. media persistente;
+3. manifiesto/configuración no secreta de release.
 
 ---
 
-# 11. Reverse proxy y frontend
+# 11. Reverse proxy y acceso privado
 
-El proxy productivo debe cubrir:
+Nginx cubre:
 
-- HTTPS;
-- redirección HTTP → HTTPS;
+- Vue;
+- proxy `/api/`;
+- serving `/media/`;
 - fallback SPA;
-- proxy de API;
 - compresión;
-- cache largo para assets con hash;
-- no cachear incorrectamente index.html;
-- CSP;
-- HSTS cuando HTTPS definitivo esté validado;
-- X-Content-Type-Options;
-- Referrer-Policy;
-- límites de body compatibles con los uploads permitidos por backend;
-- timeouts compatibles con recepción de audio sin convertir al proxy en almacenamiento.
+- cache largo de assets con hash;
+- política prudente de cache para media;
+- límites de body compatibles con uploads;
+- timeouts compatibles con audio.
 
-La política exacta de CSP debe construirse a partir del frontend real y del dominio público de media. No usar unsafe-inline/unsafe-eval por comodidad salvo justificación explícita y temporal.
+Cloudflare Zero Trust/Tunnel cubre el acceso remoto privado de PC, tablet y móvil autorizados.
+No se compra ni exige dominio para cumplir esta topología.
+
+HTTPS/HSTS sólo se exigen si la topología final presenta al navegador un hostname HTTPS real. No se
+simula HTTPS mediante headers sobre una ruta privada que no lo usa. La confidencialidad del enlace
+remoto debe estar demostrada por la red privada/túnel.
 
 ---
 
@@ -472,7 +416,7 @@ main
   ├── feat/d00-baseline
   ├── feat/d01-core-runtime
   ├── feat/d02-staging-proxy
-  ├── feat/d03-r2-media
+  ├── feat/d03-media-local
   ├── feat/d04-release-candidate
   ├── feat/d05-backup-restore
   ├── feat/d06-observabilidad
@@ -717,346 +661,267 @@ docs/implementacion/D02_STAGING_PROXY.md.
 
 ---
 
-# D03 — Cloudflare R2 y media pública
+# D03 — Media persistente local de producción — CERRADA
 
-**Objetivo:** materializar la infraestructura externa ya congelada por backend F07.7.
+**Objetivo:** convertir la media local de staging en persistencia productiva durable, respaldable y
+servida por el mismo origen, sin depender de servicios cloud de objetos.
 
 ## Precondiciones obligatorias
 
-- D01 cerrada;
-- homex-backend F07.7 cerrada;
-- homex-backend F08.4 cerrada;
-- disponibilidad de cuenta/configuración Cloudflare necesaria.
-
-Frontend FE03 no necesita estar cerrada para iniciar D03.
+- D02 cerrada;
+- homex-backend F09.1 cerrado o commit candidato fijado;
+- FE08 cerrada.
 
 ## Trabajo obligatorio
 
-- provisionar bucket único homex-public-media;
-- configurar prefijos productos/ y proformas/;
-- configurar dominio propio de media;
-- configurar lectura pública;
-- inyectar credenciales sólo en backend;
-- comprobar que URLs devueltas son públicas/estables;
-- definir cache/CDN;
-- documentar rotación de credenciales;
-- comprobar que producción falla claramente si faltan variables;
-- comprobar que ningún volumen Docker reemplaza R2.
+- definir `HOMEX_MEDIA_HOST_PATH`;
+- montar el directorio en API como RW y Nginx como RO;
+- mantener `/var/lib/homex/media` como target interno contractual;
+- servir `/media/` desde Nginx;
+- conservar `productos/` y `proformas/`;
+- aplicar permisos correctos al UID/GID runtime;
+- comprobar que recrear contenedores no elimina media;
+- retirar del perfil productivo la obligación de variables R2;
+- mantener configuración S3 opcional sin activarla;
+- documentar capacidad, espacio libre y procedimiento de migración futura.
 
 ## Tests obligatorios
 
 - carga de imagen de producto;
-- lectura pública sin autenticación;
 - variantes WebP accesibles;
 - adjunto de proforma accesible;
-- borrado autorizado elimina objetos esperados;
+- borrado autorizado elimina archivos esperados;
 - prefijos correctos;
-- base conserva key y no URL completa;
-- ningún secreto aparece en frontend, OpenAPI o logs.
+- PostgreSQL conserva key/ruta, no path físico absoluto;
+- recreación de API/Nginx conserva los archivos;
+- media no depende del writable layer del contenedor;
+- audio sigue fuera de este storage.
 
 ## Cierre
 
-docs/implementacion/D03_R2_MEDIA.md.
+`docs/implementacion/D03_MEDIA_LOCAL.md`.
 
 ---
 
-# D04 — Release candidate integrada
+# D04 — Release candidate integrada y acceso privado
 
-**Objetivo:** congelar una combinación completa backend/frontend/NLP lista para ensayos de producción.
+**Objetivo:** congelar una combinación backend/frontend/NLP y hacerla accesible únicamente a
+usuarios/dispositivos autorizados mediante Cloudflare Zero Trust/Tunnel.
 
 ## Precondiciones obligatorias
 
-Antes de iniciar D04 deben estar terminadas:
-
-- homex-nlp F06;
-- homex-backend F08.4;
-- homex-frontend FE08;
-- integración backend F09 en alcance funcional necesario para FE08;
-- D00–D03.
-
-La evidencia de D04 puede formar parte del cierre formal de backend F09 si el último gate pendiente es el E2E compartido en entorno integrado; no se permite que ambos lados se declaren cerrados basándose solamente el uno en el otro.
+- D00–D03 cerradas;
+- homex-backend F09.1 cerrado;
+- homex-frontend FE08 cerrada;
+- homex-nlp F09 cerrada.
 
 ## Trabajo obligatorio
 
-- fijar SHAs/tags de backend y frontend;
-- fijar artefacto/hash NLP;
-- fijar modelo ASR;
-- generar manifest.yaml;
-- build limpio de todas las imágenes;
-- Compose de release/producción;
-- política definitiva de secrets;
-- CSP real;
-- HSTS después de validar HTTPS;
-- TLS;
-- hosts/CORS/CSRF productivos;
+- fijar SHAs/tags backend/frontend y artefacto/hash NLP/ASR;
+- generar `manifest.yaml`;
+- build limpio de imágenes;
+- Compose productivo;
+- crear/configurar Cloudflare Tunnel;
+- publicar una ruta privada hacia el servicio HOMEX;
+- configurar enrolamiento/política Zero Trust para usuarios autorizados;
+- validar acceso desde escritorio y al menos un dispositivo móvil/tablet representativo;
+- mantener PostgreSQL y Redis sin exposición pública;
+- validar hosts/CORS/CSRF según origen real;
 - source maps según política;
-- límites de recursos iniciales;
+- límites iniciales de CPU/RAM;
 - smoke E2E crítico.
+
+No se requiere dominio público. El conector debe funcionar mediante conexión saliente.
 
 ## E2E mínimo
 
-- login;
-- identidad/capabilities;
-- clientes;
-- catálogo;
-- proforma manual;
-- aprobación;
-- pedido + movimiento de stock + OT;
-- recibo;
-- LISTO_ENTREGA;
-- nota de entrega;
-- captura NLP;
-- procesamiento worker;
-- HITL;
-- media pública.
+login → clientes → catálogo/media → proforma → aprobación → pedido/VENTA/OT → recibo →
+LISTO_ENTREGA → nota → captura NLP → worker → HITL.
 
 ## Cierre
 
-docs/implementacion/D04_RELEASE_CANDIDATE.md.
+`docs/implementacion/D04_RELEASE_CANDIDATE.md`.
 
 ---
 
 # D05 — Backup, restore, migración y rollback
 
-**Objetivo:** demostrar recuperación real antes de considerar producción.
+**Objetivo:** demostrar recuperación real antes de producción.
 
-## Precondiciones obligatorias
+## Precondiciones
 
 - D04 cerrada;
-- backend F09 funcionalmente cerrado para la release candidata;
-- frontend FE08 cerrada.
+- backend F09.1 cerrado;
+- FE08 cerrada.
 
 ## Trabajo obligatorio
 
-Crear:
+Crear/terminar `scripts/backup.sh`, `restore.sh`, `deploy.sh`, `smoke.sh`, procedimiento de
+migración y rollback.
 
-- scripts/backup.sh;
-- scripts/restore.sh;
-- scripts/deploy.sh;
-- scripts/smoke.sh;
-- procedimiento de migración;
-- procedimiento de rollback compatible;
-- verificación DB ↔ R2;
-- documentación recovery/runbook.
+El backup debe incluir PostgreSQL + media persistente + manifiesto de release, y excluir audio.
 
 ## Ensayo obligatorio
 
 1. desplegar release candidata;
-2. cargar datos representativos;
-3. generar backup PostgreSQL;
-4. destruir/recrear la base de prueba;
-5. restaurar;
-6. ejecutar migraciones necesarias;
-7. levantar API/worker;
+2. cargar datos e imágenes representativos;
+3. respaldar PostgreSQL y media;
+4. destruir/recrear la base y directorio de prueba;
+5. restaurar ambos;
+6. ejecutar migraciones;
+7. levantar API/worker/proxy;
 8. ejecutar smoke;
-9. verificar keys de media contra R2;
-10. verificar que ningún audio fue respaldado.
+9. verificar DB ↔ media;
+10. verificar ausencia de audio en backup.
 
 **No se cierra D05 con un backup nunca restaurado.**
 
 ## Cierre
 
-docs/implementacion/D05_RECOVERY.md con evidencia exacta del restore.
+`docs/implementacion/D05_RECOVERY.md`.
 
 ---
 
 # D06 — Observabilidad, seguridad operacional y resiliencia
 
-**Objetivo:** hacer observable el sistema y comprobar fallos operativos controlados.
-
-## Precondiciones obligatorias
-
-- D05 cerrada;
-- backend F08.4 cerrada;
-- release candidata D04 disponible.
+**Objetivo:** comprobar fallos controlados en la topología real.
 
 ## Trabajo obligatorio
 
-- logs estructurados o formato operacional definido;
-- correlación suficiente entre proxy/API/worker;
-- evitar datos sensibles;
-- métricas básicas de API, worker, Redis y PostgreSQL;
-- espacio de disco para temporales;
-- alertas mínimas;
-- health/readiness consumibles;
+- logs operacionales sin datos sensibles;
+- correlación proxy/API/worker;
+- métricas básicas;
+- monitor de espacio en PostgreSQL, media y temporales;
+- health/readiness;
 - rotación de logs;
-- límites CPU/RAM iniciales;
-- reinicio controlado;
-- documentación monitoring/README.md.
+- límites CPU/RAM;
+- runbook.
 
 ## Fallos a ensayar
 
 - PostgreSQL no disponible;
 - Redis no disponible;
-- worker caído;
-- proxy reiniciado;
-- API reiniciada;
-- R2 no disponible;
-- temporal lleno o cleanup fallido;
-- contrato/configuración incompleta;
-- dos solicitudes concurrentes de procesamiento.
+- worker/API/proxy reiniciado;
+- directorio de media ausente o read-only;
+- disco de media/temporales lleno;
+- cleanup fallido;
+- Tunnel detenido;
+- dispositivo no autorizado;
+- configuración incompleta;
+- dos procesamientos concurrentes.
 
 ## Cierre
 
-docs/implementacion/D06_OBSERVABILIDAD_RESILIENCIA.md.
+`docs/implementacion/D06_OBSERVABILIDAD_RESILIENCIA.md`.
 
 ---
 
 # D07 — Release productiva y cierre de F10
 
-**Objetivo:** producir una release operable y generar la evidencia que necesitan los planes backend/NLP/frontend.
-
-## Precondiciones obligatorias
-
-- D00–D06 cerradas;
-- homex-backend F09 cerrada o con única dependencia documental de este despliegue;
-- homex-frontend FE08 cerrada;
-- homex-nlp F06 cerrada;
-- CI completa verde;
-- restore ensayado.
+**Precondiciones:** D00–D06 cerradas, CI verde y restore ensayado.
 
 ## Trabajo obligatorio
 
-- tag/version de release;
+- tag/version;
 - manifiesto inmutable;
 - builds finales;
 - migración controlada;
-- despliegue;
+- despliegue en PC/servidor objetivo;
 - smoke;
-- validación HTTPS;
-- validación R2;
+- validación de acceso privado;
+- validación de media local persistente;
 - validación worker real;
 - validación de backup;
 - documentación installation/operations/recovery;
-- checklist de rollback;
+- checklist rollback;
 - evidencia de versiones.
 
-## Efecto inter-repositorio
-
-El cierre D07 debe aportar evidencia para:
-
-- homex-backend F10 — Despliegue y recuperación;
-- homex-nlp F10 — Despliegue reproducible y recuperación;
-- homex-frontend FE09 — sección Release/homex-deploy.
-
-La documentación de esos repositorios debe referenciar la release/manifiesto exactos, no copiar infraestructura.
+D07 aporta evidencia para backend F10, NLP F10 y FE09 Release.
 
 ## Cierre
 
-docs/implementacion/D07_RELEASE.md.
+`docs/implementacion/D07_RELEASE.md`.
 
 ---
 
 # D08 — Piloto, operación y cierre integrado
 
-**Objetivo:** soportar el piloto real sin modificar silenciosamente la arquitectura y cerrar la operación de la versión.
+**Objetivo:** operar la versión con usuarios reales y cerrar el sistema.
 
-## Precondiciones obligatorias
+## Precondiciones
 
-Antes de iniciar D08 deben estar terminadas o formalmente enlazadas a D07:
-
-- homex-backend F10;
-- homex-nlp F10;
-- homex-frontend FE09 release/deploy;
-- D07.
+- D07 cerrada;
+- backend/NLP F10 enlazados;
+- FE09 release desplegada.
 
 ## Trabajo obligatorio
 
-- fijar versión del piloto;
-- conservar manifiesto;
-- monitorear salud y errores;
-- ejecutar backups durante el periodo;
-- probar runbook ante incidencia simulada;
-- documentar cambios realizados durante piloto;
-- clasificar feedback como defecto, mejora o requisito;
-- no afinar NLP sobre test formal ya observado;
-- no conservar audio para facilitar investigación;
+- fijar versión de piloto;
+- validar PC, tablet y móvil autorizados;
+- monitorear salud, errores y tiempos percibidos;
+- ejecutar backups;
+- probar runbook;
+- documentar incidencias/cambios;
+- clasificar feedback;
+- no conservar audio;
 - preparar handoff operacional.
 
-## Coordinación final
-
-D08 alimenta:
-
-- homex-backend F11;
-- homex-nlp F11;
-- cierre/piloto de frontend FE09;
-- checklist integrado de los cuatro repositorios.
+D08 alimenta backend F11, NLP F11 y cierre final FE09.
 
 ## Cierre
 
-docs/implementacion/D08_PILOTO_CIERRE.md.
+`docs/implementacion/D08_PILOTO_CIERRE.md`.
 
 ---
 
 # 15. Matriz de dependencias inter-repositorio
 
-| Deploy | Backend requerido | Frontend requerido | NLP requerido | Estado al 25-09-2026 |
+| Deploy | Backend | Frontend | NLP | Estado 30-09-2026 |
 |---|---|---|---|---|
-| D00 | F08.4 cerrada | FE02 cerrada | F06 cerrada | Listo para iniciar |
-| D01 | F08.4 cerrada | No requerido | F06 cerrada | Listo tras D00 |
-| D02 | F08.4 + auth/OpenAPI estable | FE02 cerrada | F06 | Listo tras D01 |
-| D03 | F07.7 + F08.4 | FE02 suficiente | F06 | Listo tras D01 |
-| D04 | F09 funcional para FE08 | FE08 cerrada | F06 | Bloqueado por avance frontend/integración |
-| D05 | F09 de release | FE08 cerrada | F06 | Bloqueado por D04 |
-| D06 | F08.4/F09 | FE08 cerrada | F06 | Bloqueado por D05 |
-| D07 | F09 cerrado | FE08 cerrada | F06 | Bloqueado por D00–D06 |
-| D08 | F10 cerrado/enlazado a D07 | FE09 release/deploy | F10 cerrado/enlazado a D07 | Bloqueado por D07 |
-
-Nota sobre dependencias circulares:
-
-- FE08 necesita un entorno integrado real; D02 existe precisamente para proporcionarlo antes de FE08.
-- FE09 coordina con homex-deploy; por eso D07 no exige FE09 ya cerrada. D07 produce la evidencia que permite cerrar la parte de release/deploy de FE09.
-- backend F10 y NLP F10 son objetivos de sistema que se materializan en este repositorio. D07 produce su evidencia de cierre; no se exige F10 como precondición de D07.
+| D00 | F08.4 | FE02 | F06 | CERRADA |
+| D01 | F08.4 | — | F06 | CERRADA |
+| D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
+| D03 | **F09.1** | FE08 | F09 | CERRADA |
+| D04 | F09.1 | FE08 | F09 | SIGUIENTE |
+| D05 | F09.1 | FE08 | F09 | tras D04 |
+| D06 | F09.1 | FE08 | F09 | tras D05 |
+| D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
+| D08 | F10 | FE09 | F10 | tras D07 |
 
 ---
 
 # 16. Secuencia recomendada desde el estado actual
 
 ~~~text
-Estado actual
-|
-|-- NLP F06 ------------------------------ CERRADA
-|-- Backend F08.4 ------------------------ CERRADA
-|-- Frontend FE02 ------------------------ CERRADA
-|-- Frontend FE03 ------------------------ EN DESARROLLO
-|
-v
-D00 baseline/contrato deploy
-|
-v
-D01 backend + NLP + PostgreSQL + Redis
-|
-+----------------------+
-|                      |
-v                      v
-D02 staging/proxy      D03 R2/media
-|                      |
-+----------+-----------+
-           |
-           | mientras frontend avanza FE03 -> FE08
-           | y backend completa F09
-           v
-D04 release candidate integrada
-|
-v
-D05 backup/restore/rollback
-|
-v
-D06 observabilidad/resiliencia
-|
-v
+Backend F09 ---------------------------- CERRADA
+Frontend FE08 -------------------------- CERRADA
+NLP F09 ------------------------------- CERRADA
+Deploy D00–D03 ------------------------ CERRADAS
+Backend F09.1 ------------------------- CERRADA
+D03 media local persistente ------------ CERRADA
+        |
+        v
+D04 release candidate + Zero Trust/Tunnel
+        |
+        v
+D05 backup + restore + rollback
+        |
+        v
+D06 observabilidad + resiliencia
+        |
+        v
 D07 release productiva
-|
-+--> evidencia backend F10
-+--> evidencia NLP F10
-+--> evidencia frontend FE09
-|
-v
-D08 piloto/cierre integrado
-|
-+--> backend F11
-+--> NLP F11
-+--> cierre frontend/piloto
+        |
+        +--> Backend F10
+        +--> NLP F10
+        +--> FE09 Release
+        |
+        v
+D08 piloto/cierre
+        |
+        +--> Backend F11
+        +--> NLP F11
+        +--> FE09 final
 ~~~
 
 ---
@@ -1099,7 +964,7 @@ homex-deploy/
         ├── D00_BASELINE.md
         ├── D01_CORE_RUNTIME.md
         ├── D02_STAGING_PROXY.md
-        ├── D03_R2_MEDIA.md
+        ├── D03_MEDIA_LOCAL.md
         ├── D04_RELEASE_CANDIDATE.md
         ├── D05_RECOVERY.md
         ├── D06_OBSERVABILIDAD_RESILIENCIA.md
@@ -1115,27 +980,25 @@ El nombre compose.yaml reemplazará docker-compose.yml durante D00 únicamente s
 
 No introducir:
 
-- lógica comercial en scripts Bash;
-- SQL manual que compita con migraciones Django;
+- lógica comercial en Bash;
+- SQL que compita con migraciones Django;
 - SQLite como sustituto de PostgreSQL;
 - Redis como fuente de verdad;
-- audio histórico;
-- audio en backups;
-- media persistente en filesystem del host;
+- audio histórico o en backups;
+- media en writable layer efímero del contenedor;
 - binarios de media en PostgreSQL;
-- un segundo bucket privado no aprobado;
-- URLs firmadas como arquitectura paralela;
-- Cloudflare Images;
-- MinIO productivo;
-- subida Vue → R2;
-- secretos en Git;
-- latest como release productiva;
-- ramas flotantes en manifest;
+- rutas físicas del host persistidas en DB/API;
+- dominio público como requisito artificial;
+- exposición pública de PostgreSQL/Redis/API;
+- subida Vue directa a filesystem/S3;
+- secretos o tokens Tunnel en Git;
+- latest o ramas flotantes en release;
 - migración automática desde todas las réplicas;
-- frontend con credenciales R2;
-- permisos relajados sólo para simplificar Compose;
-- bypass de TLS/CORS/CSRF como solución permanente;
+- permisos relajados para simplificar Compose;
 - mocks como única evidencia de D04–D08.
+
+S3/R2 no está prohibido: es una opción futura que sólo se activa si existe una necesidad operativa
+medida.
 
 ---
 
@@ -1163,31 +1026,25 @@ Una fase está terminada únicamente cuando:
 
 # 20. Definición de listo para producción
 
-HOMEX no se considera listo para producción mientras no estén simultáneamente cumplidos:
-
 - [ ] D00–D07 cerradas;
-- [ ] backend F09 cerrado;
-- [ ] frontend FE08 cerrada;
-- [ ] release frontend FE09 coordinada;
-- [ ] NLP F06 fijada por artefacto/version;
-- [ ] backend/NLP F10 con evidencia de D07;
-- [ ] PostgreSQL restaurado exitosamente desde backup de ensayo;
+- [ ] backend F09.1 cerrado;
+- [ ] frontend FE08 cerrada y FE09 release coordinada;
+- [ ] NLP F09 fijada por artefacto/version;
+- [ ] PostgreSQL restaurado desde backup de ensayo;
+- [ ] media restaurada y coherente con PostgreSQL;
 - [ ] migraciones controladas;
-- [ ] API/worker comparten versión backend;
-- [ ] homex-nlp fijado;
-- [ ] modelo ASR fijado;
-- [ ] Redis no contiene estado irrecuperable;
-- [ ] audio excluido de backup y limpieza independiente verificada;
-- [ ] R2 homex-public-media operativo;
-- [ ] productos/ y proformas/ operativos;
-- [ ] dominio público de media operativo;
-- [ ] HTTPS;
-- [ ] CSP/HSTS/headers validados;
+- [ ] API/worker/NLP/modelo ASR fijados;
+- [ ] Redis sin estado irrecuperable;
+- [ ] audio excluido de backup;
+- [ ] filesystem de media persistente fuera de contenedores;
+- [ ] `productos/` y `proformas/` operativos;
+- [ ] acceso mediante Zero Trust/Tunnel validado desde dispositivos autorizados;
+- [ ] no existen puertos de datos expuestos públicamente;
+- [ ] headers/CSP coherentes con el endpoint real;
 - [ ] secretos externos;
-- [ ] health/readiness;
-- [ ] logs/metrics;
+- [ ] health/readiness y logs/metrics;
 - [ ] smoke E2E crítico;
-- [ ] manifiesto de release archivado;
-- [ ] rollback/restore documentado y ensayado.
+- [ ] manifiesto archivado;
+- [ ] rollback/restore ensayado.
 
 **Principio final:** homex-deploy no adelanta el negocio. Su trabajo comienza temprano para dar a frontend/backend un entorno real de integración, pero una release sólo se promueve cuando las fases de aplicación que consume están formalmente cerradas y sus versiones quedan inmovilizadas en un manifiesto reproducible.

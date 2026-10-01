@@ -9,8 +9,9 @@ export default defineConfig({
   reporter: 'list',
   outputDir: 'test-results/playwright-d04',
   use: {
-    baseURL: process.env.D04_BASE_URL ?? 'http://homex.internal:8080',
+    baseURL: process.env.D04_BASE_URL ?? 'https://homex.internal',
     headless: true,
+    ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

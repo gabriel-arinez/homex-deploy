@@ -80,9 +80,11 @@ jobs:
           expected_api=$(awk '$1 == "api:" {print $2}' releases/manifest.yaml)
           expected_worker=$(awk '$1 == "worker:" {print $2}' releases/manifest.yaml)
           expected_frontend=$(awk '$1 == "frontend_proxy:" {print $2}' releases/manifest.yaml)
-          test "$expected_api" = "homex/backend:d04-9ce7230@$api_id"
-          test "$expected_worker" = "homex/backend:d04-9ce7230@$api_id"
-          test "$expected_frontend" = "homex/frontend-proxy:d04-deba1de@$frontend_id"
+          test "$expected_api" = "homex/backend:d04-9ce7230"
+          test "$expected_worker" = "homex/backend:d04-9ce7230"
+          test "$expected_frontend" = "homex/frontend-proxy:d04-deba1de"
+          test "$(docker image inspect homex/backend:d04-9ce7230 --format '{{index .RepoTags 0}}')" = "homex/backend:d04-9ce7230"
+          test "$(docker image inspect homex/frontend-proxy:d04-deba1de --format '{{index .RepoTags 0}}')" = "homex/frontend-proxy:d04-deba1de"
 
   integration:
     runs-on: ubuntu-latest

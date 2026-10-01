@@ -85,6 +85,12 @@ def main() -> None:
 
     for sha in (BACKEND_SHA, FRONTEND_SHA, NLP_SHA):
         require(manifest, sha, "releases/manifest.yaml")
+    for image in (
+        "api: homex/backend:d04-9ce7230",
+        "worker: homex/backend:d04-9ce7230",
+        "frontend_proxy: homex/frontend-proxy:d04-deba1de",
+    ):
+        require(manifest, image, "releases/manifest.yaml")
     for sha in (BACKEND_SHA, FRONTEND_SHA):
         require(workflow, sha, ".github/workflows/ci.yml")
 

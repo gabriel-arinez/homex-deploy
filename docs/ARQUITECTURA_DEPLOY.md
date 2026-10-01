@@ -1,105 +1,109 @@
 # Arquitectura de despliegue HOMEX
 
-## Autoridades y topología
+## Objetivo operativo
 
-PostgreSQL es la autoridad comercial. Redis transporta identificadores y puede reconstruirse
-desde outbox. R2 será la media persistente en D03. D02 usa un volumen Docker de media sólo para staging. El audio ASR vive en un volumen privado,
-temporal y excluido de backups. `homex-nlp` es un wheel embebido en el worker, no un servicio HTTP.
+HOMEX se despliega inicialmente para un grupo pequeño de usuarios internos. La prioridad es
+simplicidad, respuesta rápida, costo externo recurrente cero y una ruta de crecimiento sin
+reescribir el dominio.
+
+## Topología productiva
 
 ```text
-Navegador -> Nginx :8080 -> Vue estático
-                  |
-                  +-> /api -> Gunicorn/Django -> PostgreSQL <---- worker Celery
-                                      |               |                 |
-                                      +-> audio       +-> outbox -> Redis
-                                                                        |
-                                                            ASR + homex-nlp 0.1.0
+PC / laptop / tablet / móvil
+        |
+  Cloudflare One Client
+        |
+ Zero Trust privado
+        |
+ Cloudflare Tunnel
+        |
+        v
+      Nginx
+   +----+-----+---------+
+   |          |         |
+  Vue       /api/     /media/
+              |          |
+           Django    media host
+              |
+        +-----+------+
+        |            |
+   PostgreSQL      Redis
+                     |
+                   Worker
+                ASR + homex-nlp
 ```
 
-## Fuentes fijadas
+El túnel es saliente desde el servidor. La primera instalación no requiere IP pública,
+port-forwarding ni dominio público.
+
+## Fuentes fijadas antes de D03
 
 | Componente | Revisión/versión |
 | --- | --- |
-| backend | `0659dc553af15b2125fad9b4ac0579669916e77b` |
+| backend | `0659dc553af15b2125fad9b4ac0579669916e77b` + F09.1 para storage |
 | frontend | `57c32d3aa2c2e46fbcc7136f6a90995b67c664ea` |
-| NLP | `0.1.0`, evidencia de integración `55236655956c2f488af645aafa657db39af66b60` |
-| wheel NLP | SHA-256 `cfacc3a987f6158f43934cb64304fa50ea3e577cfa576f3db1e6d2a9576d19e6` |
-| ASR | `Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120` |
-| ASR model.bin | SHA-256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671` |
+| NLP | integración `55236655956c2f488af645aafa657db39af66b60` |
+| NLP runtime | `0.1.0` |
+| ASR | snapshot fijado por manifest |
 
-## Imagen común
+D00–D02 permanecen como baseline de construcción, runtime y staging.
 
-`docker/backend.Dockerfile` usa el lock backend y el extra `worker`; no instala dependencias
-flotantes. El contexto backend se entrega mediante un contexto BuildKit nombrado y sólo se copian
-archivos necesarios, evitando `.env`, `.git` y checkouts montados en runtime. La imagen ejecuta
-como UID/GID 10001, no root.
+## Persistencia
 
-API y worker usan exactamente `homex/backend:d02-0659dc5`; Vue/Nginx usa `homex/frontend-proxy:d02-57c32d3`. D01 es una release `baseline`,
-por lo que el manifiesto fija el tag común pero no presenta un image ID local como si fuera un
-digest de registry. Un digest inmutable `tag@sha256:...` será obligatorio al pasar a
-`candidate`, tal como exige el JSON Schema. La imagen base uv sí está fijada por digest.
+- PostgreSQL: volumen persistente y autoridad comercial.
+- Redis: efímero/reconstruible.
+- Media comercial: directorio del host `HOMEX_MEDIA_HOST_PATH`.
+- API monta media RW en `/var/lib/homex/media`.
+- Nginx monta la misma media RO y sirve `/media/`.
+- Audio ASR: directorio/volumen separado, privado, temporal y excluido de backup.
+- Modelo ASR: read-only y fijado.
 
-## Orden de arranque y roles
+Nunca se almacena media comercial en el writable layer efímero del contenedor.
 
-1. PostgreSQL crea roles separados `homex_migrator` y `homex_runtime`.
-2. `migrate` ejecuta Django una sola vez con el rol migrador.
-3. `grant-runtime` aplica el SQL de privilegios propiedad de backend.
-4. API/worker esperan el cierre exitoso de ambos jobs y los healthchecks de datos.
-5. API/worker conectan exclusivamente como runtime.
+## Contrato de media
 
-El runtime recibe DML sobre tablas y uso de secuencias; no ownership ni DDL. El mapa de
-migraciones hoja HOMEX se compara contra Django y contra `django_migrations`.
+Backend conserva keys relativas bajo:
 
-## Procesos
+```text
+productos/
+proformas/
+```
 
-| Servicio/job | Comando real |
-| --- | --- |
-| migrate | `python manage.py migrate --noinput` |
-| API D02 | `gunicorn config.wsgi:application --bind=0.0.0.0:8000` |
-| worker | `celery -A config worker --loglevel=INFO` |
-| publisher | `python manage.py publicar_outbox_capturas` |
-| reconciler | `python manage.py reconciliar_outbox_capturas` |
-| cleanup | `python manage.py limpiar_audio_temporal` |
+La instalación inicial usa Django `FileSystemStorage`. El frontend sólo consume las URLs devueltas
+por API. Un cambio futuro a S3/R2 no modifica tablas, endpoints ni componentes Vue.
 
-D02 instala Gunicorn 23.0.0 desde un lock de despliegue con hash. Esta dependencia es propia de
-la imagen operativa y se instala después del sync backend para que uv no la retire.
+## Red
 
-## Almacenamiento y exposición
+La red de datos Compose mantiene PostgreSQL/Redis aislados. Nginx es el único punto de entrada de la
+aplicación. D04 añade Cloudflare Tunnel y políticas Zero Trust para los dispositivos autorizados.
 
-- `postgres_data`: persistente, probado tras reinicio.
-- Redis: sin AOF/snapshot, no autoritativo.
-- `audio_temporal`: compartido sólo por API, worker y cleanup; modo `0700`; sin puerto/ruta HTTP.
-- modelo ASR: bind mount sólo en worker y de solo lectura.
-- `media_persistente`: staging local, escrito por API y leído por Nginx; será reemplazado por R2 en D03.
-- frontend: artefacto Vite inmutable dentro de la imagen Nginx.
+No se compra un dominio sólo para habilitar el despliegue privado.
 
-La red `data` es interna. PostgreSQL/Redis sólo publican loopback para diagnóstico local. API se
-publica en loopback para diagnóstico; Nginx es el punto HTTP de staging y por defecto también
-publica sólo en loopback.
+## Recuperación
 
-## Health
+La unidad mínima de backup es:
 
-- PostgreSQL: `pg_isready`.
-- Redis: `redis-cli ping`.
-- API: healthcheck de despliegue con conexión PostgreSQL, `SELECT 1` y `GET /api/v1/health/`.
-- Nginx: documento raíz accesible y dependencia sobre API healthy.
-- worker: `celery inspect ping` dirigido al nodo fijo.
+1. dump PostgreSQL;
+2. directorio de media;
+3. manifest/configuración no secreta de release.
 
-Redis no forma parte del readiness comercial de API: si cae, PostgreSQL/outbox conserva el trabajo.
+Redis y audio no se restauran.
 
-## Resiliencia verificada
+La prueba de D05 destruye y reconstruye tanto DB como media antes de aceptar el backup.
 
-El gate `scripts/test_d01_runtime.sh` comprueba base vacía, segunda migración no-op, permisos,
-API/worker reales, wheel NLP, pipeline F08, modelo ASR montado read-only, temporal `0700`,
-persistencia PostgreSQL tras reinicio, outbox creado con Redis detenido, publicación al volver
-Redis y cleanup con el worker detenido. Después de reiniciar PostgreSQL, Redis o worker, el gate
-espera explícitamente a que vuelvan a responder antes de continuar.
+## Rendimiento
 
-El script rechaza cualquier `D01_COMPOSE_PROJECT` que no comience con `homex-d01-`, evitando
-que su cleanup con `down --volumes` pueda apuntar accidentalmente al proyecto normal.
+Para la carga esperada se priorizan:
 
-El job CI `asr-contract` verifica además el `oid sha256` del puntero Git LFS de
-`model.bin` directamente contra el snapshot Hugging Face fijado, sin descargar los 484 MB.
-Para una provisión local real, `scripts/verify_asr_model.py` exige también
-`config.json`, `tokenizer.json` y `vocabulary.txt` y calcula el SHA-256 completo de
-`model.bin`.
+- mismo origen Vue/API/media;
+- variantes WebP 320/640/1280;
+- Nginx sirviendo binarios sin pasar cada GET por Django;
+- PostgreSQL local al backend;
+- polling operativo ligero en lugar de infraestructura push prematura;
+- SSD y espacio de disco monitorizado.
+
+## Escalabilidad
+
+Si HOMEX crece, el orden de evolución es aumentar recursos, ampliar usuarios privados, mover media a
+S3/R2 si se justifica y separar servicios/DB sólo cuando métricas reales lo indiquen. Ninguno de
+esos pasos cambia las reglas comerciales.

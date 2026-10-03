@@ -26,6 +26,7 @@ COPY --from=backend docs/sql/ ./docs/sql/
 COPY --from=backend scripts/ ./scripts/
 COPY scripts/apply_runtime_privileges.py /opt/homex-deploy/apply_runtime_privileges.py
 COPY scripts/verify_expected_migrations.py /opt/homex-deploy/verify_expected_migrations.py
+COPY scripts/verify_media_integrity.py /opt/homex-deploy/verify_media_integrity.py
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --extra worker \

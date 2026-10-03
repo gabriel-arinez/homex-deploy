@@ -117,6 +117,11 @@ La unidad mínima de backup es:
 Redis y audio no se restauran. Las claves privadas TLS son secretos operativos y se respaldarán
 según la política definida en D05, separadas de los datos de aplicación.
 
+D05 implementa `scripts/backup.sh`, `restore.sh`, `deploy.sh` y `smoke.sh`; cada unidad lleva
+dump custom PostgreSQL, archivo e inventario SHA-256 de media y manifiesto de release. El restore
+rechaza checksums o releases incompatibles y audita referencias DB ↔ archivos. Redis, audio ASR,
+secretos y claves TLS privadas quedan fuera. El runbook es `docs/RECOVERY_RUNBOOK.md`.
+
 La prueba de D05 destruye y reconstruye tanto DB como media antes de aceptar el backup.
 
 ## Rendimiento

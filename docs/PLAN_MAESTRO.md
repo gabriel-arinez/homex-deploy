@@ -1,7 +1,7 @@
 # Plan maestro de implementación, despliegue y operación — HOMEX Deploy
 
-**Fecha de revisión:** 30 de septiembre de 2026  
-**Versión del plan:** 1.2 — despliegue privado HTTPS + media local persistente  
+**Fecha de revisión:** 3 de octubre de 2026\
+**Versión del plan:** 1.3 — recuperación reproducible PostgreSQL + media\
 **Repositorio:** gabriel-arinez/homex-deploy  
 **Rama rectora:** main  
 **Repositorio recién inicializado:** commit 343f6eb390f4794a49f1bad1a242c1af2817ef0b  
@@ -796,7 +796,8 @@ El backup debe incluir PostgreSQL + media persistente + manifiesto de release, y
 
 ## Cierre
 
-`docs/implementacion/D05_RECOVERY.md`.
+`docs/implementacion/D05_RECOVERY.md`. La operación reproducible se detalla en
+`docs/RECOVERY_RUNBOOK.md`.
 
 ---
 
@@ -901,7 +902,7 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 | D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
 | D03 | **F09.1** | FE08 | F09 | CERRADA |
 | D04 | F09.1 | FE08 | F09 | EN CURSO — CI verde; Cloudflare/dispositivos pendientes |
-| D05 | F09.1 | FE08 | F09 | tras D04 |
+| D05 | F09.1 | FE08 | F09 | IMPLEMENTADA EN RAMA — cierre formal condicionado a D04 |
 | D06 | F09.1 | FE08 | F09 | tras D05 |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
 | D08 | F10 | FE09 | F10 | tras D07 |

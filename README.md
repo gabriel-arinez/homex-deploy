@@ -10,7 +10,14 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 - D02 — staging integrado y reverse proxy: cerrada y fusionada.
 - D03 — media persistente local: cerrada y validada.
 - D04 — release candidate integrada + HTTPS/acceso privado: en curso; automatización implementada, validación real de Cloudflare/dispositivos pendiente.
-- D05+ — recuperación, resiliencia, release y piloto pendientes.
+- D05 — recuperación implementada en `feat/d05-backup-restore`; cierre secuencial condicionado al cierre formal de D04.
+- D06+ — resiliencia, release y piloto pendientes.
+
+## Recuperación D05
+
+La unidad PostgreSQL + media + manifiesto, los comandos destructivos de restore y el rollback están
+documentados en `docs/RECOVERY_RUNBOOK.md`. El gate integral es
+`scripts/test_d05_recovery.sh`.
 
 ## Staging D02
 
@@ -85,4 +92,4 @@ privado mediante Cloudflare Zero Trust/Tunnel. `homex.internal` usa una CA priva
 PC, tablet y móvil dispongan de contexto seguro sin comprar dominio ni provisionar R2.
 
 La rama histórica `feat/d03-r2-media` no fue fusionada y no representa el plan vigente. D03 ya está
-fusionada; el trabajo actual continúa en `feat/d04-private-release-candidate`.
+fusionada; D05 se implementa en `feat/d05-backup-restore` sobre la base técnica D04.

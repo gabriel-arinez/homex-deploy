@@ -63,10 +63,15 @@ docker compose -f docker-compose.yml -f compose.production.yml \
 scripts/smoke.sh
 ```
 
-El procedimiento verifica `SHA256SUMS` antes de cualquier mutación, detiene la aplicación, elimina
-y recrea la base, ejecuta `pg_restore`, extrae media en staging, valida su inventario, aplica
-migraciones/permisos y ejecuta la auditoría DB ↔ media. Detecta referencias sin archivo, archivos
-no referenciados y symlinks. Redis y audio arrancan vacíos.
+El procedimiento verifica `SHA256SUMS` y la metadata de recuperación, extrae la media en staging y
+valida íntegramente su inventario **antes de cualquier operación destructiva sobre PostgreSQL**.
+Después levanta/verifica PostgreSQL, ejecuta `pg_restore --list` contra el dump y sólo entonces
+detiene los writers, elimina/recrea la base y ejecuta `pg_restore`. Finalmente intercambia la media
+prevalidada, aplica migraciones/permisos y ejecuta la auditoría DB ↔ media. Detecta referencias sin
+archivo, archivos no referenciados y symlinks. Redis y audio arrancan vacíos.
+
+Si la media o su inventario no coinciden, el restore termina antes de `dropdb`; la base activa no
+se modifica. El gate D05 comprueba explícitamente esta propiedad con una guardia de base de datos.
 
 ## Migración controlada
 
@@ -102,7 +107,9 @@ Al menos una vez por release y periódicamente en operación:
 4. destruir volumen DB, media y volúmenes efímeros del entorno de ensayo;
 5. restaurar;
 6. ejecutar migraciones, smoke y auditoría DB ↔ media;
-7. confirmar que el sentinel de audio no existe en el backup ni tras restore.
+7. confirmar que el sentinel de audio no existe en el backup ni tras restore;
+8. alterar de forma controlada un inventario de media, recalcular el checksum externo y verificar
+   que el restore lo rechaza sin modificar la base activa.
 
 `scripts/test_d05_recovery.sh` automatiza exactamente ese ensayo sobre un namespace Compose
 aislado `homex-d05-*` y nunca acepta credenciales productivas.

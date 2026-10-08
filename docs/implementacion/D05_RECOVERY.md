@@ -2,19 +2,22 @@
 
 ## Estado y base
 
+**CERRADA — 8 de octubre de 2026.**
+
 - rama: `feat/d05-backup-restore`;
-- base rectora: `origin/main` en `b323f1f1fbf88fdc9d6ba658b8e138675bcb604b`;
-- base técnica incorporada en la rama D05: D04 `2547f1a2792699e42713fec19447e3d6b914553e`;
+- base rectora incorporada: `main` en `3fa35d30d7dce742a4bb4a21ee2479fa98dab4bd` (D04 cerrada);
+- reconciliación D04 → D05: `17898bb238f74d7790764fd438e01fdaae980523`;
 - backend fijado: `9ce723048d98a3925be45d9c359a25e6be7b19f3`;
 - frontend fijado: `deba1de244395dbdcb266f03026630b403768d71`;
 - NLP fijado: `8d1750b2d1d26f6d90da10603216b7926bdaf820`;
 - implementación operativa: `f46239e`;
-- gate destructivo y CI: `8cd5d24`.
+- gate destructivo inicial: `8cd5d24`;
+- prevalidación segura antes de destrucción: `5587106590a0d6695473eaa065babfe58dda43da`;
+- prueba de atomicidad/prevalidación: `a335d3d7e0e2f0e9db1f36d392d567300339cefb`;
+- GitHub Actions push run `37833997224`: **success**.
 
-D04 tiene automatización verde en su rama, pero su validación externa Cloudflare/dispositivos y su
-merge formal a `main` seguían pendientes al iniciar D05. No se modificó ni fusionó `main`: D05
-nació desde el `main` actualizado e incorporó D04 sólo en su propia rama para completar la base
-técnica. El cierre formal en la secuencia maestra queda condicionado a resolver esa precondición.
+La precondición D04 quedó formalmente cerrada y fusionada antes del cierre de D05. La rama D05 fue
+reconciliada con ese `main`, reejecutó la CI completa y no mantiene bloqueos técnicos abiertos.
 
 ## Alcance implementado
 
@@ -45,9 +48,14 @@ No se agregó lógica comercial ni SQL paralelo a migraciones Django.
 ## Contrato de integridad
 
 La copia no se acepta si falla un checksum global, el inventario de media, el listado del dump o la
-coincidencia de release. Después del restore, `verify_media_integrity.py` construye las keys
-referenciadas por productos/adjuntos y las compara con el filesystem. El gate falla ante faltantes,
-archivos no referenciados o symlinks.
+coincidencia de release. Antes de cualquier destrucción de PostgreSQL, `restore.sh` extrae la media
+en staging, valida íntegramente su inventario y confirma que `database.dump` es legible con
+`pg_restore --list`. Sólo entonces entra en la sección destructiva del restore.
+
+Después del restore, `verify_media_integrity.py` construye las keys referenciadas por
+productos/adjuntos y las compara con el filesystem. El gate falla ante faltantes, archivos no
+referenciados o symlinks. El ensayo adicional corrompe de forma controlada el inventario de media y
+demuestra que el restore falla conservando intacta una guardia creada en la base activa.
 
 El ensayo D05 crea producto, proforma, adjunto y variantes reales mediante el backend; escribe un
 sentinel `.wav` en el volumen temporal; respalda; destruye PostgreSQL, Redis/audio y media; restaura;
@@ -71,6 +79,8 @@ ensayo en un runner limpio bajo `homex-d05-ci`.
 ## Riesgos y controles
 
 - `--confirm` hace explícita la destrucción de la base objetivo;
+- media e inventario se prevalida completamente antes de tocar PostgreSQL;
+- `pg_restore --list` valida el dump antes de `dropdb`;
 - el restore rechaza un manifest de release distinto salvo override consciente;
 - backup y media no pueden compartir árbol;
 - un lock evita backups concurrentes;
@@ -83,3 +93,16 @@ ensayo en un runner limpio bajo `homex-d05-ci`.
 
 El procedimiento completo, política inicial, restore y rollback están en
 `docs/RECOVERY_RUNBOOK.md`.
+
+
+## Evidencia final de cierre
+
+La CI completa posterior a la reconciliación con D04 quedó verde. En particular, el job
+`recovery` volvió a ejecutar el ensayo destructivo y la prueba negativa de media incoherente,
+mientras los gates heredados D01–D04 continuaron verdes.
+
+D05 cumple el criterio rector: existe un backup real que fue restaurado en un entorno limpio,
+PostgreSQL y media quedaron coherentes después de la recuperación, el audio temporal no se restauró
+y una unidad de media inválida es rechazada antes de modificar la base activa.
+
+**D05 CERRADA. La siguiente fase formal es D06 — observabilidad, seguridad operacional y resiliencia.**

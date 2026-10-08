@@ -38,6 +38,7 @@ def main() -> None:
     nginx = (ROOT / "nginx/production.conf").read_text()
     unit = (ROOT / "systemd/homex-cloudflared.service").read_text()
     installer = (ROOT / "scripts/install_cloudflared.sh").read_text()
+    private_endpoint = (ROOT / "scripts/setup_private_endpoint.sh").read_text()
     tls_generator = (ROOT / "scripts/generate_internal_tls.sh").read_text()
     prepare_asr = (ROOT / "scripts/prepare_asr_d04.py").read_text()
     frontend_image = (ROOT / "docker/frontend.Dockerfile").read_text()
@@ -47,7 +48,7 @@ def main() -> None:
     for fragment in (
         f"HOMEX_PRIVATE_HOSTNAME={PRIVATE_HOSTNAME}",
         f"HOMEX_PRIVATE_ORIGIN={PRIVATE_ORIGIN}",
-        "HOMEX_PRIVATE_BIND=127.0.0.1",
+        "HOMEX_PRIVATE_BIND=10.254.254.1",
         "HOMEX_PRIVATE_PORT=443",
         "HOMEX_TLS_CERT_HOST_PATH=/etc/homex/tls/homex.internal.crt",
         "HOMEX_TLS_KEY_HOST_PATH=/etc/homex/tls/homex.internal.key",
@@ -95,12 +96,21 @@ def main() -> None:
 
     require(
         unit,
-        "--no-autoupdate tunnel run --token-file "
+        "--no-autoupdate tunnel --protocol http2 run --token-file "
         "/etc/homex/cloudflared/tunnel-token",
         "systemd unit",
     )
     reject(unit, "--token ", "systemd unit")
     reject(unit, "TUNNEL_TOKEN=", "systemd unit")
+
+    for fragment in (
+        "type dummy",
+        "homex0",
+        "homex-private",
+        "10.254.254.1/32",
+        "connection.autoconnect yes",
+    ):
+        require(private_endpoint, fragment, "scripts/setup_private_endpoint.sh")
 
     for fragment in (
         "2026.9.2",
@@ -174,7 +184,7 @@ def main() -> None:
     port = proxy_ports[0]
     assert str(port["target"]) == "8443"
     assert str(port["published"]) == "443"
-    assert port.get("host_ip") == "127.0.0.1"
+    assert port.get("host_ip") == "10.254.254.1"
 
     cert_mount = mount_for(proxy, "/etc/nginx/tls/tls.crt")
     key_mount = mount_for(proxy, "/etc/nginx/tls/tls.key")

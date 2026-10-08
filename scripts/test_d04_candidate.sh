@@ -5,6 +5,7 @@ compose=${COMPOSE_BIN:-docker compose}
 env_file=${D04_ENV_FILE:-.env.production.example}
 project=${D04_COMPOSE_PROJECT:-homex-d04-gate}
 base_url=${D04_BASE_URL:-https://homex.internal}
+export HOMEX_PRIVATE_BIND=${D04_PRIVATE_BIND:-127.0.0.1}
 backend_context=${BACKEND_CONTEXT:-../homex-backend}
 frontend_context=${FRONTEND_CONTEXT:-../homex-frontend}
 media_dir=${D04_MEDIA_HOST_PATH:-/tmp/homex-d04-media}
@@ -25,7 +26,7 @@ case "$project" in
 esac
 
 if ! getent hosts homex.internal | grep -Eq '(^|[[:space:]])127\.0\.0\.1([[:space:]]|$)'; then
-  echo "homex.internal debe resolver localmente a 127.0.0.1 para el gate D04" >&2
+  echo "El gate D04 aislado requiere homex.internal -> 127.0.0.1" >&2
   exit 2
 fi
 

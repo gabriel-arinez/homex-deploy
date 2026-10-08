@@ -2,11 +2,12 @@
 
 ## Estado
 
-**EN CURSO — PARTE AUTOMATIZABLE VERDE; VALIDACIÓN EXTERNA PENDIENTE.**
+**EN CURSO — CI E INFRAESTRUCTURA REAL VERDES; GATES MANUALES FINALES PENDIENTES.**
 
-La release candidate reproducible está implementada y validada en CI. D04 no se cerrará hasta
-validar un tunnel real de Cloudflare Zero Trust y acceso desde escritorio + móvil/tablet
-autorizados.
+La release candidate reproducible está implementada y el commit técnico `f0a971f8f18520b53ea159f5c3ae4d69fe580079`
+quedó validado por GitHub Actions. El tunnel real, HTTPS privado y acceso Android mediante datos
+móviles ya están comprobados. D04 permanece abierta únicamente hasta completar los gates manuales
+finales definidos abajo.
 
 ## Base
 
@@ -37,7 +38,7 @@ Cloudflare Tunnel
       |
 cloudflared host
       |
-127.0.0.1:443
+homex0 / 10.254.254.1:443
       |
 Nginx TLS
       |  certificado homex.internal
@@ -54,7 +55,7 @@ No se requiere dominio público.
 `compose.production.yml`:
 
 - elimina publicaciones de puertos de PostgreSQL, Redis y API;
-- publica únicamente Nginx TLS en `127.0.0.1:443`;
+- publica únicamente Nginx TLS en `10.254.254.1:443`, sobre la interfaz virtual persistente `homex0`;
 - conserva media bind RW en API y RO en Nginx;
 - fija settings Django de producción;
 - añade límites iniciales CPU/RAM;
@@ -87,8 +88,12 @@ Se fija `cloudflared 2026.9.2` y se verifican SHA256 para Linux amd64/arm64 ante
 El servicio `homex-cloudflared.service` usa:
 
 ```text
+--protocol http2
 --token-file /etc/homex/cloudflared/tunnel-token
 ```
+
+`scripts/setup_private_endpoint.sh` crea de forma idempotente `homex0` con `10.254.254.1/32` y
+mantiene `homex.internal` en ese endpoint estable, desacoplándolo de la IP DHCP del servidor.
 
 El token no se versiona, no se incluye en `.env.production.example` y no queda embebido en la
 unidad systemd.
@@ -108,20 +113,28 @@ Runbook: `docs/private-access-cloudflare.md`.
 - `manage.py check` y `makemigrations --check --dry-run` corren dentro de la release;
 - se verifica ausencia de source maps y secretos en el bundle.
 
-## Validación externa pendiente
+## Validación externa real
 
-Para cerrar D04 faltan evidencias no simulables por CI sin credenciales/dispositivos reales:
+Ya se comprobó en infraestructura real:
 
-1. crear tunnel remoto en la organización Cloudflare Zero Trust;
-2. crear ruta **Private hostname** para `homex.internal`;
-3. generar la CA/certificado HOMEX en el servidor y conservar privada la clave de la CA;
-4. instalar y confiar `homex-root-ca.crt` en al menos un escritorio y un móvil/tablet;
-5. enrolar esos dispositivos con Cloudflare One Client;
-6. validar `https://homex.internal`, incluido permiso/grabación de micrófono;
-7. validar usuario/dispositivo autorizado;
-8. validar rechazo de un dispositivo o identidad no autorizada;
-9. registrar evidencia de tunnel saludable y acceso funcional;
-10. confirmar que detener `homex-cloudflared.service` corta el acceso remoto.
+1. tunnel remoto `homex` activo en la organización Cloudflare Zero Trust `muebleria-homex`;
+2. ruta **Private hostname** para `homex.internal`;
+3. CA/certificado HOMEX generados y clave privada conservada sólo en el servidor;
+4. `homex-root-ca.crt` confiado en el servidor y en Android TECNO;
+5. Android enrolado mediante Cloudflare One Client;
+6. `https://homex.internal` y `/api/v1/health/` accesibles desde el móvil;
+7. acceso remoto validado también con datos móviles, fuera de la LAN;
+8. listener productivo estabilizado en `homex0 / 10.254.254.1:443`;
+9. `cloudflared` funcionando con cuatro conexiones registradas por HTTP/2;
+10. secretos expuestos accidentalmente durante diagnóstico rotados y servicios revalidados.
+
+Para cerrar D04 todavía faltan únicamente estos gates manuales:
+
+1. ejecutar desde un dispositivo físico el flujo micrófono → upload → ASR/NLP/HITL;
+2. validar un segundo cliente de escritorio autorizado a través del tunnel;
+3. validar el rechazo de un dispositivo o identidad no autorizada;
+4. detener `homex-cloudflared.service`, comprobar pérdida de acceso remoto y reiniciarlo para
+   confirmar recuperación.
 
 No se almacenarán tokens, capturas con secretos ni credenciales en Git.
 
@@ -132,9 +145,11 @@ D04 sólo cambia a **CERRADA** después de CI verde y de las pruebas externas an
 
 ## Evidencia automatizada
 
-Commit funcional validado: `1ed902ee25658294fcb357925bcf532d80bcfd77`.
+Commit automatizado anterior validado: `1ed902ee25658294fcb357925bcf532d80bcfd77`.
 
-GitHub Actions run `36812418834`: **success**.
+Commit técnico actual validado: `f0a971f8f18520b53ea159f5c3ae4d69fe580079`.
+
+GitHub Actions PR run `37800151828`: **success**.
 
 Jobs verdes:
 
@@ -165,5 +180,5 @@ El gate D04 confirmó en HTTPS:
 El fallo HTTP previo queda conservado como evidencia de por qué HTTPS no es opcional para el
 navegador de HOMEX.
 
-La única condición restante para cerrar D04 es la validación externa de Cloudflare y dispositivos
-reales descrita arriba.
+La infraestructura Cloudflare/Android y el CI están verdes. La condición restante para cerrar D04
+son exclusivamente los gates manuales finales descritos arriba.

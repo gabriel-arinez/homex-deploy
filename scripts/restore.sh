@@ -72,9 +72,11 @@ python3 scripts/media_inventory.py verify "$staging" "$backup_dir/media-manifest
 run_compose stop api worker beat frontend-proxy publisher reconciler cleanup 2>/dev/null || true
 run_compose up -d postgres
 attempt=0
+# Esperar una consulta SQL real; pg_isready por sí solo puede adelantarse al arranque completo.
 # shellcheck disable=SC2016
 until run_compose exec -T postgres sh -eu -c \
-  'pg_isready --username "$POSTGRES_USER" --dbname postgres' >/dev/null 2>&1; do
+  'psql --username "$POSTGRES_USER" --dbname postgres --tuples-only --command "SELECT 1"' \
+  >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   [ "$attempt" -lt 60 ] || { echo "PostgreSQL no quedó disponible" >&2; exit 1; }
   sleep 1

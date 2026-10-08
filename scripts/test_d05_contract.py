@@ -30,6 +30,7 @@ def main() -> None:
         "--confirm",
         "sha256sum -c SHA256SUMS",
         "pg_restore --list",
+        'psql --username "$POSTGRES_USER" --dbname postgres',
         "pg_restore --exit-on-error",
         "media_inventory.py verify",
         "verify_media_integrity.py",

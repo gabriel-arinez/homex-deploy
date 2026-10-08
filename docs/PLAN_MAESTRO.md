@@ -30,7 +30,7 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 
 ---
 
-# 1. Estado coordinado al 30 de septiembre de 2026
+# 1. Estado coordinado al 8 de octubre de 2026
 
 ## 1.1. homex-nlp
 
@@ -64,7 +64,9 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 - el acceso productivo será privado mediante Cloudflare Zero Trust/Tunnel, sin exigir dominio público.
 
 Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
-backend F09.1 y D03 cerrados; D04 está en curso con CI, tunnel real y acceso Android/datos móviles verdes; sólo quedan gates manuales finales.
+backend F09.1 y D03 cerrados; D04 también quedó cerrada tras CI verde y validación real de laptop,
+Android TECNO, micrófono/ASR/NLP/HITL, aislamiento y caída/recuperación del tunnel. D05 pasa a ser
+la siguiente fase formal de deploy.
 
 ---
 
@@ -719,7 +721,7 @@ servida por el mismo origen, sin depender de servicios cloud de objetos.
 
 ---
 
-# D04 — Release candidate integrada y acceso privado
+# D04 — Release candidate integrada y acceso privado — CERRADA
 
 **Objetivo:** congelar una combinación backend/frontend/NLP y hacerla accesible únicamente a
 usuarios/dispositivos autorizados mediante Cloudflare Zero Trust/Tunnel.
@@ -902,8 +904,8 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 | D01 | F08.4 | — | F06 | CERRADA |
 | D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
 | D03 | **F09.1** | FE08 | F09 | CERRADA |
-| D04 | F09.1 | FE08 | F09 | EN CURSO — CI + tunnel + Android/datos móviles verdes; gates manuales finales pendientes |
-| D05 | F09.1 | FE08 | F09 | IMPLEMENTADA EN RAMA — cierre formal condicionado a D04 |
+| D04 | F09.1 | FE08 | F09 | CERRADA — CI y validación real completadas |
+| D05 | F09.1 | FE08 | F09 | IMPLEMENTADA EN RAMA — siguiente fase formal; requiere reconciliar con main tras D04 |
 | D06 | F09.1 | FE08 | F09 | tras D05 |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
 | D08 | F10 | FE09 | F10 | tras D07 |
@@ -921,7 +923,7 @@ Backend F09.1 ------------------------- CERRADA
 D03 media local persistente ------------ CERRADA
         |
         v
-D04 release candidate + HTTPS + Zero Trust/Tunnel — EN CURSO (infra real validada; gates manuales finales)
+D04 release candidate + HTTPS + Zero Trust/Tunnel — CERRADA
         |
         v
 D05 backup + restore + rollback

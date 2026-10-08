@@ -262,20 +262,22 @@ Ya se verificó en infraestructura real:
 - `/api/v1/health/` remoto y frontend respondiendo correctamente;
 - rotación de los secretos que quedaron expuestos durante el diagnóstico y revalidación de servicios.
 
-Siguen pendientes antes del cierre formal: flujo real de micrófono desde dispositivo físico,
-validación de un segundo cliente de escritorio autorizado, prueba de denegación y prueba deliberada
-de caída/recuperación del tunnel.
+La validación manual final también quedó completada:
+
+- laptop autorizada: login y navegación correctos;
+- Android TECNO autorizado: login y navegación correctos;
+- captura real desde laptop y TECNO: grabación, upload, ASR, NLP y HITL completados;
+- dispositivo no enrolado: no alcanzó HOMEX; el bloqueo observado fue `504 DNS look up failed`
+  mediante Fortinet/DNS, sin exposición del login de la aplicación;
+- al detener `homex-cloudflared.service`, el TECNO perdió el acceso remoto (`DNS_PROBE_POSSIBLE`);
+- al iniciar nuevamente `homex-cloudflared.service`, el acceso remoto se recuperó con normalidad.
 
 ## 12. Cierre
 
-D04 sólo se cierra cuando existen:
+**D04 CERRADA — 8 de octubre de 2026.**
 
-- CI verde de la release candidate;
-- tunnel real saludable;
-- escritorio autorizado validado;
-- móvil/tablet autorizado validado;
-- micrófono real validado;
-- prueba de denegación;
-- prueba de caída/recuperación del tunnel.
+Se cumplieron los gates automatizados y manuales: CI verde, tunnel real saludable, laptop y Android
+autorizados, flujo real micrófono → upload → ASR → NLP → HITL, aislamiento de un dispositivo no
+autorizado y caída/recuperación deliberada del tunnel.
 
 No se versionan secretos, claves privadas, tokens ni certificados cliente.

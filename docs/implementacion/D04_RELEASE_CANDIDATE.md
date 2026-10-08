@@ -2,12 +2,11 @@
 
 ## Estado
 
-**EN CURSO — CI E INFRAESTRUCTURA REAL VERDES; GATES MANUALES FINALES PENDIENTES.**
+**CERRADA — 8 de octubre de 2026.**
 
-La release candidate reproducible está implementada y el commit técnico `f0a971f8f18520b53ea159f5c3ae4d69fe580079`
-quedó validado por GitHub Actions. El tunnel real, HTTPS privado y acceso Android mediante datos
-móviles ya están comprobados. D04 permanece abierta únicamente hasta completar los gates manuales
-finales definidos abajo.
+La release candidate reproducible quedó implementada y validada por CI y por pruebas reales en
+laptop y Android TECNO. Se verificaron HTTPS privado, tunnel Cloudflare, captura física de audio,
+ASR/NLP/HITL, aislamiento de un dispositivo no autorizado y caída/recuperación del tunnel.
 
 ## Base
 
@@ -128,19 +127,24 @@ Ya se comprobó en infraestructura real:
 9. `cloudflared` funcionando con cuatro conexiones registradas por HTTP/2;
 10. secretos expuestos accidentalmente durante diagnóstico rotados y servicios revalidados.
 
-Para cerrar D04 todavía faltan únicamente estos gates manuales:
+Los gates manuales finales quedaron completados:
 
-1. ejecutar desde un dispositivo físico el flujo micrófono → upload → ASR/NLP/HITL;
-2. validar un segundo cliente de escritorio autorizado a través del tunnel;
-3. validar el rechazo de un dispositivo o identidad no autorizada;
-4. detener `homex-cloudflared.service`, comprobar pérdida de acceso remoto y reiniciarlo para
-   confirmar recuperación.
+1. laptop autorizada: login, navegación y flujo micrófono → upload → ASR → NLP → HITL correctos;
+2. Android TECNO autorizado: mismo flujo real completado correctamente;
+3. dispositivo no enrolado: HOMEX no fue alcanzable; se observó `504 DNS look up failed` mediante
+   Fortinet/DNS y no se expuso el login de HOMEX;
+4. con `homex-cloudflared.service` detenido, el TECNO perdió acceso remoto y mostró
+   `DNS_PROBE_POSSIBLE`;
+5. tras iniciar nuevamente el servicio, `https://homex.internal` volvió a funcionar normalmente.
 
 No se almacenarán tokens, capturas con secretos ni credenciales en Git.
 
 ## Cierre
 
-D04 sólo cambia a **CERRADA** después de CI verde y de las pruebas externas anteriores.
+**D04 CERRADA — 8 de octubre de 2026.**
+
+No quedan gates funcionales, de acceso privado ni de resiliencia del tunnel pendientes para esta fase.
+La siguiente fase formal es D05 — backup, restore, migración y rollback.
 
 
 ## Evidencia automatizada
@@ -180,5 +184,5 @@ El gate D04 confirmó en HTTPS:
 El fallo HTTP previo queda conservado como evidencia de por qué HTTPS no es opcional para el
 navegador de HOMEX.
 
-La infraestructura Cloudflare/Android y el CI están verdes. La condición restante para cerrar D04
-son exclusivamente los gates manuales finales descritos arriba.
+CI, infraestructura Cloudflare, laptop, Android TECNO, captura real y resiliencia del tunnel quedaron
+validados. D04 no mantiene bloqueos abiertos.

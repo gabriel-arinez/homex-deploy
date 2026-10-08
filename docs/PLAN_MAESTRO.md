@@ -1,7 +1,7 @@
 # Plan maestro de implementación, despliegue y operación — HOMEX Deploy
 
-**Fecha de revisión:** 8 de octubre de 2026  
-**Versión del plan:** 1.3 — endpoint privado estable + validación real Cloudflare  
+**Fecha de revisión:** 8 de octubre de 2026
+**Versión del plan:** 1.5 — D05 cerrada + recuperación reproducible validada
 **Repositorio:** gabriel-arinez/homex-deploy  
 **Rama rectora:** main  
 **Repositorio recién inicializado:** commit 343f6eb390f4794a49f1bad1a242c1af2817ef0b  
@@ -65,8 +65,10 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 
 Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
 backend F09.1 y D03 cerrados; D04 también quedó cerrada tras CI verde y validación real de laptop,
-Android TECNO, micrófono/ASR/NLP/HITL, aislamiento y caída/recuperación del tunnel. D05 pasa a ser
-la siguiente fase formal de deploy.
+Android TECNO, micrófono/ASR/NLP/HITL, aislamiento y caída/recuperación del tunnel. D05 también
+quedó cerrada tras reconciliarse con D04, ejecutar backup/restore destructivo real y validar
+precondiciones de integridad antes de destruir PostgreSQL. D06 pasa a ser la siguiente fase formal
+de deploy.
 
 ---
 
@@ -766,7 +768,7 @@ LISTO_ENTREGA → nota → captura NLP → worker → HITL.
 
 ---
 
-# D05 — Backup, restore, migración y rollback
+# D05 — Backup, restore, migración y rollback — CERRADA
 
 **Objetivo:** demostrar recuperación real antes de producción.
 
@@ -800,7 +802,8 @@ El backup debe incluir PostgreSQL + media persistente + manifiesto de release, y
 
 ## Cierre
 
-`docs/implementacion/D05_RECOVERY.md`.
+`docs/implementacion/D05_RECOVERY.md`. La operación reproducible se detalla en
+`docs/RECOVERY_RUNBOOK.md`.
 
 ---
 
@@ -905,8 +908,8 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 | D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
 | D03 | **F09.1** | FE08 | F09 | CERRADA |
 | D04 | F09.1 | FE08 | F09 | CERRADA — CI y validación real completadas |
-| D05 | F09.1 | FE08 | F09 | IMPLEMENTADA EN RAMA — siguiente fase formal; requiere reconciliar con main tras D04 |
-| D06 | F09.1 | FE08 | F09 | tras D05 |
+| D05 | F09.1 | FE08 | F09 | CERRADA — backup/restore destructivo, integridad y prevalidación verdes |
+| D06 | F09.1 | FE08 | F09 | SIGUIENTE — precondición D05 satisfecha |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
 | D08 | F10 | FE09 | F10 | tras D07 |
 
@@ -926,10 +929,10 @@ D03 media local persistente ------------ CERRADA
 D04 release candidate + HTTPS + Zero Trust/Tunnel — CERRADA
         |
         v
-D05 backup + restore + rollback
+D05 backup + restore + rollback ----------------------- CERRADA
         |
         v
-D06 observabilidad + resiliencia
+D06 observabilidad + resiliencia ----------------------- SIGUIENTE
         |
         v
 D07 release productiva

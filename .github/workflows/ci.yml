@@ -228,6 +228,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          path: sources/backend
+      - run: python3 scripts/test_media_inventory.py
+      - run: python3 scripts/test_d05_contract.py
+      - name: Run destructive D05 backup and restore gate
+        env:
+          BACKEND_CONTEXT: ./sources/backend
+          D05_COMPOSE_PROJECT: homex-d05-ci
+          D05_WORK_DIR: /tmp/homex-d05-ci
+        run: sh scripts/test_d05_recovery.sh
+
   secrets:
     runs-on: ubuntu-latest
     steps:

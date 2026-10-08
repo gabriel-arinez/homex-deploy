@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -184,7 +185,8 @@ def main() -> None:
     port = proxy_ports[0]
     assert str(port["target"]) == "8443"
     assert str(port["published"]) == "443"
-    assert port.get("host_ip") == "10.254.254.1"
+    expected_bind = os.environ.get("HOMEX_PRIVATE_BIND", "10.254.254.1")
+    assert port.get("host_ip") == expected_bind
 
     cert_mount = mount_for(proxy, "/etc/nginx/tls/tls.crt")
     key_mount = mount_for(proxy, "/etc/nginx/tls/tls.key")

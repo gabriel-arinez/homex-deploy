@@ -113,8 +113,9 @@ PY
   sha256sum database.dump media.tar.gz media-manifest.json release-manifest.yaml recovery.json > SHA256SUMS
 )
 
-run_compose exec -T postgres psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  --command "CREATE TABLE d05_restore_guard (value text NOT NULL); INSERT INTO d05_restore_guard VALUES ('preservar');" \
+run_compose exec -T postgres sh -eu -c \
+  'psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+    --command "CREATE TABLE d05_restore_guard (value text NOT NULL); INSERT INTO d05_restore_guard VALUES ('"'"'preservar'"'"');"' \
   >/dev/null
 
 if HOMEX_MEDIA_UID=$(id -u) HOMEX_MEDIA_GID=$(id -g) \
@@ -124,8 +125,9 @@ if HOMEX_MEDIA_UID=$(id -u) HOMEX_MEDIA_GID=$(id -g) \
 fi
 
 guard=$(
-  run_compose exec -T postgres psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-    --tuples-only --no-align --command "SELECT value FROM d05_restore_guard LIMIT 1"
+  run_compose exec -T postgres sh -eu -c \
+    'psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+      --tuples-only --no-align --command "SELECT value FROM d05_restore_guard LIMIT 1"'
 )
 [ "$guard" = "preservar" ] || {
   echo "Restore alteró PostgreSQL antes de validar completamente la media" >&2

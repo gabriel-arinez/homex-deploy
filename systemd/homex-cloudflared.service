@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/cloudflared --no-autoupdate tunnel run --token-file /etc/homex/cloudflared/tunnel-token
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate tunnel --protocol http2 run --token-file /etc/homex/cloudflared/tunnel-token
 Restart=always
 RestartSec=5s
 NoNewPrivileges=true

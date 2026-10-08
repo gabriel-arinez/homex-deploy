@@ -1,7 +1,7 @@
 # Plan maestro de implementación, despliegue y operación — HOMEX Deploy
 
-**Fecha de revisión:** 3 de octubre de 2026\
-**Versión del plan:** 1.3 — recuperación reproducible PostgreSQL + media\
+**Fecha de revisión:** 8 de octubre de 2026
+**Versión del plan:** 1.4 — D04 cerrada + D05 recuperación reproducible
 **Repositorio:** gabriel-arinez/homex-deploy  
 **Rama rectora:** main  
 **Repositorio recién inicializado:** commit 343f6eb390f4794a49f1bad1a242c1af2817ef0b  
@@ -30,7 +30,7 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 
 ---
 
-# 1. Estado coordinado al 30 de septiembre de 2026
+# 1. Estado coordinado al 8 de octubre de 2026
 
 ## 1.1. homex-nlp
 
@@ -64,7 +64,9 @@ Una fase no se considera terminada porque Docker Compose arranque o porque una U
 - el acceso productivo será privado mediante Cloudflare Zero Trust/Tunnel, sin exigir dominio público.
 
 Conclusión: el trabajo anterior D00–D02 sigue siendo válido. El siguiente bloque coordinado es
-backend F09.1 y D03 cerrados; D04 está en curso con automatización verde y validación externa pendiente.
+backend F09.1 y D03 cerrados; D04 también quedó cerrada tras CI verde y validación real de laptop,
+Android TECNO, micrófono/ASR/NLP/HITL, aislamiento y caída/recuperación del tunnel. D05 pasa a ser
+la siguiente fase formal de deploy.
 
 ---
 
@@ -411,7 +413,9 @@ No se compra ni exige dominio para cumplir esta topología.
 
 D04 presenta al navegador `https://homex.internal` con un certificado firmado por la CA privada
 HOMEX. La raíz pública de confianza del proyecto es `homex-root-ca.crt`; su clave privada nunca
-sale del servidor. Cada dispositivo autorizado instala únicamente el certificado raíz.
+sale del servidor. Cada dispositivo autorizado instala únicamente el certificado raíz. El listener
+productivo usa `homex0 / 10.254.254.1:443`, una interfaz virtual persistente que evita depender de
+la IP DHCP de Wi-Fi/Ethernet; `cloudflared` usa HTTP/2 explícito.
 
 HTTPS es obligatorio aunque Cloudflare ya cifre el transporte: la captura de micrófono y otras APIs
 del navegador requieren un contexto seguro. Nginx termina TLS y envía
@@ -717,7 +721,7 @@ servida por el mismo origen, sin depender de servicios cloud de objetos.
 
 ---
 
-# D04 — Release candidate integrada y acceso privado
+# D04 — Release candidate integrada y acceso privado — CERRADA
 
 **Objetivo:** congelar una combinación backend/frontend/NLP y hacerla accesible únicamente a
 usuarios/dispositivos autorizados mediante Cloudflare Zero Trust/Tunnel.
@@ -895,14 +899,14 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 
 # 15. Matriz de dependencias inter-repositorio
 
-| Deploy | Backend | Frontend | NLP | Estado 30-09-2026 |
+| Deploy | Backend | Frontend | NLP | Estado 08-10-2026 |
 |---|---|---|---|---|
 | D00 | F08.4 | FE02 | F06 | CERRADA |
 | D01 | F08.4 | — | F06 | CERRADA |
 | D02 | F08.4/F09 | FE08 compatible | F06/F09 | CERRADA |
 | D03 | **F09.1** | FE08 | F09 | CERRADA |
-| D04 | F09.1 | FE08 | F09 | EN CURSO — CI verde; Cloudflare/dispositivos pendientes |
-| D05 | F09.1 | FE08 | F09 | IMPLEMENTADA EN RAMA — cierre formal condicionado a D04 |
+| D04 | F09.1 | FE08 | F09 | CERRADA — CI y validación real completadas |
+| D05 | F09.1 | FE08 | F09 | EN REVISIÓN FINAL — implementación y ensayo destructivo ya realizados; reconciliada con D04 |
 | D06 | F09.1 | FE08 | F09 | tras D05 |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
 | D08 | F10 | FE09 | F10 | tras D07 |
@@ -920,7 +924,7 @@ Backend F09.1 ------------------------- CERRADA
 D03 media local persistente ------------ CERRADA
         |
         v
-D04 release candidate + HTTPS + Zero Trust/Tunnel — EN CURSO
+D04 release candidate + HTTPS + Zero Trust/Tunnel — CERRADA
         |
         v
 D05 backup + restore + rollback

@@ -11,19 +11,23 @@ La release D04 usa:
 https://homex.internal
 ```
 
-Nginx escucha sólo en `127.0.0.1:443` del servidor. Cloudflare Tunnel conecta de salida y los
-clientes autorizados llegan mediante Cloudflare One Client.
+Nginx escucha sólo en `10.254.254.1:443`, sobre la interfaz virtual persistente `homex0`.
+Cloudflare Tunnel conecta de salida y los clientes autorizados llegan mediante Cloudflare One Client.
+La dirección física de Wi-Fi/Ethernet puede cambiar por DHCP sin cambiar el listener de HOMEX.
 
 ## 1. Preparar el servidor HOMEX
 
-Crear la resolución local del hostname:
+Crear el endpoint privado persistente y la resolución local del hostname:
 
 ```bash
-grep -qE '(^|[[:space:]])homex\.internal([[:space:]]|$)' /etc/hosts ||
-  echo '127.0.0.1 homex.internal' | sudo tee -a /etc/hosts
+sh scripts/setup_private_endpoint.sh
 
+ip -4 -br addr show homex0
 getent hosts homex.internal
 ```
+
+El resultado operativo esperado es `homex0` con `10.254.254.1/32` y `homex.internal` resolviendo a
+`10.254.254.1`. No se usa la IP DHCP de la interfaz física como `HOMEX_PRIVATE_BIND`.
 
 Preparar media persistente:
 
@@ -43,10 +47,6 @@ está excluido de Git.
 ## 2. Generar TLS interno HOMEX
 
 ```bash
-set -a
-. ./.env.production
-set +a
-
 HOMEX_PRIVATE_HOSTNAME=homex.internal \
 sh scripts/generate_internal_tls.sh
 ```
@@ -115,7 +115,7 @@ curl --cacert /etc/homex/tls/homex-root-ca.crt \
 ```
 
 PostgreSQL, Redis y API no deben publicar puertos al host. Sólo Nginx debe escuchar en
-`127.0.0.1:443`.
+`10.254.254.1:443`, sobre el endpoint privado persistente de HOMEX.
 
 ## 4. Habilitar Gateway para tráfico privado
 
@@ -148,14 +148,11 @@ Pegar el token, Enter y Ctrl-D.
 Instalar el binario fijado por D04:
 
 ```bash
-set -a
-. ./.env.production
-set +a
-
 sh scripts/install_cloudflared.sh
 ```
 
-El instalador verifica SHA256 e instala `cloudflared 2026.9.2` y la unidad systemd.
+El instalador verifica SHA256 e instala `cloudflared 2026.9.2` y la unidad systemd. La unidad fija
+`--protocol http2`, que fue el transporte estable validado en el servidor HOMEX.
 
 Validar:
 
@@ -248,21 +245,39 @@ Comprobar aislamiento:
 
 - PostgreSQL y Redis no tienen puertos publicados;
 - API no tiene puerto publicado al host;
-- sólo Nginx escucha en `127.0.0.1:443`;
+- sólo Nginx escucha en `10.254.254.1:443`;
 - un dispositivo/identidad no autorizado queda bloqueado;
 - al detener `homex-cloudflared.service`, el acceso remoto deja de funcionar;
 - al volver a iniciarlo, el acceso se recupera.
 
-## 11. Cierre
+## 11. Estado de validación real
 
-D04 sólo se cierra cuando existen:
+Ya se verificó en infraestructura real:
 
-- CI verde de la release candidate;
-- tunnel real saludable;
-- escritorio autorizado validado;
-- móvil/tablet autorizado validado;
-- micrófono real validado;
-- prueba de denegación;
-- prueba de caída/recuperación del tunnel.
+- tunnel `homex` saludable con conexiones HTTP/2;
+- ruta **Private hostname** para `homex.internal`;
+- endpoint estable `homex0 / 10.254.254.1` independiente de DHCP;
+- CA HOMEX confiada en el servidor y en un Android TECNO autorizado;
+- acceso HTTPS desde Android, incluido acceso mediante datos móviles fuera de la LAN;
+- `/api/v1/health/` remoto y frontend respondiendo correctamente;
+- rotación de los secretos que quedaron expuestos durante el diagnóstico y revalidación de servicios.
+
+La validación manual final también quedó completada:
+
+- laptop autorizada: login y navegación correctos;
+- Android TECNO autorizado: login y navegación correctos;
+- captura real desde laptop y TECNO: grabación, upload, ASR, NLP y HITL completados;
+- dispositivo no enrolado: no alcanzó HOMEX; el bloqueo observado fue `504 DNS look up failed`
+  mediante Fortinet/DNS, sin exposición del login de la aplicación;
+- al detener `homex-cloudflared.service`, el TECNO perdió el acceso remoto (`DNS_PROBE_POSSIBLE`);
+- al iniciar nuevamente `homex-cloudflared.service`, el acceso remoto se recuperó con normalidad.
+
+## 12. Cierre
+
+**D04 CERRADA — 8 de octubre de 2026.**
+
+Se cumplieron los gates automatizados y manuales: CI verde, tunnel real saludable, laptop y Android
+autorizados, flujo real micrófono → upload → ASR → NLP → HITL, aislamiento de un dispositivo no
+autorizado y caída/recuperación deliberada del tunnel.
 
 No se versionan secretos, claves privadas, tokens ni certificados cliente.

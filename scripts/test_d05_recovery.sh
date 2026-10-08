@@ -92,6 +92,47 @@ test -d "$backup_dir"
   grep -q 'audio-temporal' recovery.json
 )
 
+# Un inventario de media incoherente debe fallar antes de tocar PostgreSQL.
+corrupt_backup=$backup_root/homex-corrupt-media
+cp -a "$backup_dir" "$corrupt_backup"
+python3 - "$corrupt_backup/media-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+manifest = json.loads(path.read_text(encoding="utf-8"))
+files = manifest.get("files", [])
+if not files:
+    raise SystemExit("El fixture D05 no generó media para probar prevalidación")
+files[0]["sha256"] = "0" * 64
+path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+(
+  cd "$corrupt_backup"
+  sha256sum database.dump media.tar.gz media-manifest.json release-manifest.yaml recovery.json > SHA256SUMS
+)
+
+run_compose exec -T postgres psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+  --command "CREATE TABLE d05_restore_guard (value text NOT NULL); INSERT INTO d05_restore_guard VALUES ('preservar');" \
+  >/dev/null
+
+if HOMEX_MEDIA_UID=$(id -u) HOMEX_MEDIA_GID=$(id -g) \
+  scripts/restore.sh "$corrupt_backup" --confirm; then
+  echo "Restore aceptó media corrupta" >&2
+  exit 1
+fi
+
+guard=$(
+  run_compose exec -T postgres psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+    --tuples-only --no-align --command "SELECT value FROM d05_restore_guard LIMIT 1"
+)
+[ "$guard" = "preservar" ] || {
+  echo "Restore alteró PostgreSQL antes de validar completamente la media" >&2
+  exit 1
+}
+echo d05-prevalidation-preserves-database-ok
+
 # Ensayo destructivo: desaparecen volumen PostgreSQL, Redis/audio y media del host.
 run_compose exec -T --user 0 api sh -c 'find /var/lib/homex/media -mindepth 1 -delete'
 run_compose down --volumes --remove-orphans

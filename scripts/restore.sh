@@ -64,18 +64,26 @@ assert metadata["database_format"] == "postgresql-custom"
 assert "audio-temporal" in metadata["excludes"]
 PY
 
+# Prevalidar completamente la media antes de cualquier operación destructiva sobre PostgreSQL.
+mkdir -p "$restore_parent"
+python3 scripts/media_inventory.py extract "$backup_dir/media.tar.gz" "$staging"
+python3 scripts/media_inventory.py verify "$staging" "$backup_dir/media-manifest.json"
+
 run_compose stop api worker beat frontend-proxy publisher reconciler cleanup 2>/dev/null || true
 run_compose up -d postgres
 attempt=0
-  # shellcheck disable=SC2016
+# shellcheck disable=SC2016
 until run_compose exec -T postgres sh -eu -c \
   'pg_isready --username "$POSTGRES_USER" --dbname postgres' >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   [ "$attempt" -lt 60 ] || { echo "PostgreSQL no quedó disponible" >&2; exit 1; }
   sleep 1
 done
-# shellcheck disable=SC2016
 
+# Verificar que el dump sea legible antes de destruir la base objetivo.
+run_compose exec -T postgres pg_restore --list < "$backup_dir/database.dump" >/dev/null
+
+# shellcheck disable=SC2016
 run_compose exec -T postgres sh -eu -c '
   dropdb --force --if-exists --username "$POSTGRES_USER" "$POSTGRES_DB"
   createdb --username "$POSTGRES_USER" --owner "$HOMEX_DB_MIGRATOR_USER" "$POSTGRES_DB"
@@ -86,9 +94,6 @@ run_compose exec -T postgres sh -eu -c '
     --username "$POSTGRES_USER" --role "$HOMEX_DB_MIGRATOR_USER" --dbname "$POSTGRES_DB"
 ' < "$backup_dir/database.dump"
 
-mkdir -p "$restore_parent"
-python3 scripts/media_inventory.py extract "$backup_dir/media.tar.gz" "$staging"
-python3 scripts/media_inventory.py verify "$staging" "$backup_dir/media-manifest.json"
 if [ -e "$media_dir" ]; then
   mv "$media_dir" "$previous"
 fi

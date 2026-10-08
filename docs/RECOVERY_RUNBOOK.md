@@ -65,8 +65,9 @@ scripts/smoke.sh
 
 El procedimiento verifica `SHA256SUMS` y la metadata de recuperación, extrae la media en staging y
 valida íntegramente su inventario **antes de cualquier operación destructiva sobre PostgreSQL**.
-Después levanta/verifica PostgreSQL, ejecuta `pg_restore --list` contra el dump y sólo entonces
-detiene los writers, elimina/recrea la base y ejecuta `pg_restore`. Finalmente intercambia la media
+Después levanta PostgreSQL y espera una consulta SQL real (`SELECT 1`) para evitar carreras durante
+el arranque; luego ejecuta `pg_restore --list` contra el dump y sólo entonces detiene los writers,
+elimina/recrea la base y ejecuta `pg_restore`. Finalmente intercambia la media
 prevalidada, aplica migraciones/permisos y ejecuta la auditoría DB ↔ media. Detecta referencias sin
 archivo, archivos no referenciados y symlinks. Redis y audio arrancan vacíos.
 

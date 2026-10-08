@@ -14,7 +14,8 @@
 - gate destructivo inicial: `8cd5d24`;
 - prevalidación segura antes de destrucción: `5587106590a0d6695473eaa065babfe58dda43da`;
 - prueba de atomicidad/prevalidación: `a335d3d7e0e2f0e9db1f36d392d567300339cefb`;
-- GitHub Actions push run `37833997224`: **success**.
+- readiness SQL real antes del tramo destructivo: `f2343776ab5da44c3398b95e8d87090c760acd34`;
+- GitHub Actions PR run `37835709261`: **success**.
 
 La precondición D04 quedó formalmente cerrada y fusionada antes del cierre de D05. La rama D05 fue
 reconciliada con ese `main`, reejecutó la CI completa y no mantiene bloqueos técnicos abiertos.
@@ -80,6 +81,7 @@ ensayo en un runner limpio bajo `homex-d05-ci`.
 
 - `--confirm` hace explícita la destrucción de la base objetivo;
 - media e inventario se prevalida completamente antes de tocar PostgreSQL;
+- el restore espera una consulta SQL real (`SELECT 1`) antes de operar sobre una instancia recién iniciada;
 - `pg_restore --list` valida el dump antes de `dropdb`;
 - el restore rechaza un manifest de release distinto salvo override consciente;
 - backup y media no pueden compartir árbol;

@@ -2,7 +2,7 @@
 
 ## Estado y base
 
-**IMPLEMENTACIÓN COMPLETA Y VALIDACIÓN LOCAL VERDE — 9 de octubre de 2026.**
+**CERRADA — 9 de octubre de 2026.**
 
 - rama: `feat/d06-observabilidad-resiliencia`;
 - base: `f509390bccaf0f2be12d243367838b43bea758dd` (`main`, D05 cerrada);
@@ -106,5 +106,13 @@ Regresiones:
 El job `resilience-observability` fija los mismos SHA de D04/D05, construye las imágenes y ejecuta
 el gate destructivo completo en `homex-d06-ci`. Ante fallo publica logs Compose durante siete días.
 Los jobs heredados D00–D05 permanecen intactos y vuelven a ejecutar build, runtime, staging, media,
-release privada, recovery y gitleaks. La evidencia remota se añadirá después de publicar el commit y
-obtener la ejecución verde.
+release privada, recovery y gitleaks. Evidencia remota funcional:
+
+- commit: `bce7302570f68a4b7b78b5e08aabc76aa2185e9e`;
+- GitHub Actions run `37884778831`: **success**;
+- **12/12 jobs verdes**, incluido `resilience-observability`;
+- regresiones `integration`, `staging-integration`, `media-local-integration`,
+  `private-release-candidate` y `recovery`: verdes;
+- build limpio, contratos, YAML, manifiesto, ASR y gitleaks: verdes.
+
+D06 queda cerrada. La siguiente fase formal es D07 — release productiva y cierre de F10.

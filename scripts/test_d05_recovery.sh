@@ -80,7 +80,16 @@ run_compose run --rm --no-deps \
 run_compose exec -T api sh -eu -c \
   'printf asr-temporal-no-respaldar > /var/lib/homex/audio-temporal/d05-asr.wav'
 
+# El backup no debe recrear la API ni sus dependencias al reanudar writers.
+postgres_id_before=$(run_compose ps -q postgres)
+redis_id_before=$(run_compose ps -q redis)
+api_id_before=$(run_compose ps -q api)
 HOMEX_BACKUP_TIMESTAMP="$timestamp" scripts/backup.sh
+test "$(run_compose ps -q postgres)" = "$postgres_id_before" || { echo "Backup recreó PostgreSQL" >&2; exit 1; }
+test "$(run_compose ps -q redis)" = "$redis_id_before" || { echo "Backup recreó Redis" >&2; exit 1; }
+test "$(run_compose ps -q api)" = "$api_id_before" || { echo "Backup recreó API" >&2; exit 1; }
+wait_api
+echo d05-backup-no-recreate-dependencies-ok
 test -d "$backup_dir"
 (
   cd "$backup_dir"

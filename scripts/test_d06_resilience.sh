@@ -3,15 +3,24 @@ set -eu
 compose=${COMPOSE_BIN:-docker compose}
 project=${D06_COMPOSE_PROJECT:-homex-d06-gate}
 case "$project" in homex-d06-*) ;; *) echo 'D06_COMPOSE_PROJECT debe comenzar con homex-d06-' >&2; exit 2;; esac
-root=${D06_WORK_DIR:-/tmp/$project}; media=$root/media; metrics=$root/metrics; model=$root/asr; tls=$root/tls; fault_audio=$root/audio-readonly
-rm -rf "$root"; mkdir -p "$media" "$metrics" "$model" "$fault_audio"; chmod 0777 "$media" "$metrics" "$model"; touch "$model/model.bin"
+# Sólo se admite el directorio descartable exacto del namespace D06; nunca borrar uno preexistente.
+root=${D06_WORK_DIR:-/tmp/$project}
+if [ "$root" != "/tmp/$project" ] || [ -e "$root" ] || [ -L "$root" ]; then
+  echo "D06_WORK_DIR debe ser /tmp/$project y no debe existir previamente" >&2
+  exit 2
+fi
+umask 077
+mkdir "$root"
+printf '%s\n' "$project" > "$root/.d06-owner"
+media=$root/media; metrics=$root/metrics; model=$root/asr; tls=$root/tls; fault_audio=$root/audio-readonly
+mkdir -p "$media" "$metrics" "$model" "$fault_audio"; chmod 0777 "$media" "$metrics" "$model"; touch "$model/model.bin"
 export HOMEX_PRIVATE_BIND=127.0.0.1 HOMEX_PRIVATE_PORT=${D06_PRIVATE_PORT:-9443}
 export HOMEX_MEDIA_HOST_PATH=$media HOMEX_METRICS_HOST_PATH=$metrics ASR_MODEL_SOURCE=$model
 export HOMEX_TLS_CERT_HOST_PATH=$tls/homex.internal.crt HOMEX_TLS_KEY_HOST_PATH=$tls/homex.internal.key HOMEX_CA_CERT_HOST_PATH=$tls/homex-root-ca.crt
 export BACKEND_CONTEXT=${BACKEND_CONTEXT:-../homex-backend} FRONTEND_CONTEXT=${FRONTEND_CONTEXT:-../homex-frontend}
 HOMEX_PRIVATE_HOSTNAME=homex.internal HOMEX_TLS_DIR=$tls HOMEX_NGINX_GID=101 HOMEX_TLS_FORCE=1 HOMEX_TLS_UNPRIVILEGED=1 sh scripts/generate_internal_tls.sh
 run_compose(){ $compose -f docker-compose.yml -f compose.production.yml --project-name "$project" --env-file .env.production.example --profile operations --profile observability --profile build "$@"; }
-cleanup(){ status=$?; trap - EXIT INT TERM; chmod 0777 "$media" "$fault_audio" 2>/dev/null || true; run_compose down --volumes --remove-orphans || true; rm -rf "$root"; exit "$status"; }
+cleanup(){ status=$?; trap - EXIT INT TERM; chmod 0777 "$media" "$fault_audio" 2>/dev/null || true; run_compose down --volumes --remove-orphans || true; if [ -f "$root/.d06-owner" ] && [ "$(cat "$root/.d06-owner")" = "$project" ]; then rm -rf -- "$root"; fi; exit "$status"; }
 trap cleanup EXIT INT TERM
 wait_health(){ service=$1; expected=$2; attempts=0; id=$(run_compose ps -q "$service"); while :; do value=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id"); [ "$value" = "$expected" ] && return 0; attempts=$((attempts+1)); [ "$attempts" -lt 60 ] || { echo "$service no llegó a $expected (actual $value)" >&2; return 1; }; sleep 1; done; }
 url=https://homex.internal:$HOMEX_PRIVATE_PORT

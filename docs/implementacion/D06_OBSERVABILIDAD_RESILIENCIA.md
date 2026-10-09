@@ -33,12 +33,11 @@ ciclo produce:
 - duración y timestamp de la recolección.
 
 Las métricas se escriben atómicamente en `homex.prom`, compatible con textfile collectors, y el
-mismo ciclo deja un evento JSON saneado. El healthcheck del monitor exige que el archivo permanezca
-actualizado.
+mismo ciclo deja un evento JSON saneado. El healthcheck del monitor exige que el archivo permanezca\nactualizado. Ese estado indica **recolección activa**, no salud global: la salud observada\nse publica aparte en `homex_monitor_collection_healthy` y `homex_dependency_up`. El\noperador debe revisar esas métricas; no existe todavía alertmanager desplegado. El\nscript de deploy levanta y verifica el monitor como parte de la release.
 
 ## Resiliencia automatizada
 
-`scripts/test_d06_resilience.sh` exige un namespace `homex-d06-*`, genera TLS bajo `/tmp`, crea una
+`scripts/test_d06_resilience.sh` exige un namespace `homex-d06-*` y rechaza un\n`D06_WORK_DIR` distinto de `/tmp/<namespace>` o ya existente: evita borrar carpetas ajenas.\nGenera TLS bajo `/tmp`, crea una
 base y almacenamientos descartables y destruye únicamente sus propios recursos. Verifica:
 
 1. PostgreSQL detenido: la consulta SQL falla y el monitor publica `postgres=0`; al volver, SQL,
@@ -49,7 +48,7 @@ base y almacenamientos descartables y destruye únicamente sus propios recursos.
 4. Proxy/origen detenido: HTTPS deja de responder y vuelve tras levantarlo. Es la simulación local
    del tramo origen del Tunnel; el servicio Cloudflare real no se manipula.
 5. Media read-only: una escritura del usuario no-root falla; permisos restaurados permiten escribir.
-6. Disco lleno: un tmpfs aislado produce y valida `ENOSPC`, sin llenar el host.
+6. Disco lleno: un tmpfs aislado produce y valida `ENOSPC`, sin llenar el host; no\n   demuestra el tratamiento funcional de un volumen de media lleno por Django.
 7. Cleanup con audio read-only: el job devuelve error visible y no reporta éxito falso.
 8. Configuración incompleta: Compose rechaza ausencia de `DJANGO_SECRET_KEY`.
 9. Acceso sin JWT: conserva `401` a través de HTTPS/Nginx.

@@ -95,11 +95,13 @@ def collect() -> tuple[str, dict[str, object]]:
         (
             f"homex_monitor_last_success_timestamp_seconds {int(time.time()) if healthy else 0}",
             f"homex_monitor_collection_duration_seconds {duration:.6f}",
+            f"homex_monitor_collection_healthy {int(healthy)}",
         )
     )
     event = {
         "event": "homex_runtime_metrics",
         "healthy": healthy,
+        "collector_alive": True,
         "dependencies": health,
         "storage": storage,
         "duration_ms": round(duration * 1000, 2),

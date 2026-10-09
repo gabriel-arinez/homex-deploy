@@ -27,7 +27,7 @@ docker compose -f docker-compose.yml -f compose.production.yml \
 `/srv/homex/metrics/homex.prom` contiene disponibilidad de PostgreSQL, Redis y API; tamaño de base;
 outbox pendiente; y uso de media/audio temporal. Puede ser leído por un textfile collector sin
 exponer puertos adicionales. Estados de almacenamiento: `0` normal, `1` advertencia, `2` crítico.
-Umbrales iniciales: 80% y 90%. El monitor también escribe un evento JSON seguro por ciclo.
+Umbrales iniciales: 80% y 90%. El monitor también escribe un evento JSON seguro por ciclo. El healthcheck del contenedor\nindica **recolector activo y emitiendo datos recientes**, no que todas las dependencias estén\nsanas. Para incidentes, consultar `homex_monitor_collection_healthy` (0 degradado, 1 sano)\ny `homex_dependency_up` por dependencia. La recolección no envía alertas externas; el\noperador debe revisar las métricas o configurar un colector/alertmanager privado en D07.\nEl despliegue oficial inicia el monitor y falla si no alcanza su healthcheck.\nLas métricas son de almacenamiento del filesystem donde están montados media y audio;\nla prueba ENOSPC utiliza un tmpfs aislado y **no demuestra** la respuesta de la aplicación\na un volumen comercial lleno.
 
 Verificación diaria:
 

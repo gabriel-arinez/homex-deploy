@@ -1,3 +1,9 @@
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: ${HOMEX_LOG_MAX_SIZE:-10m}
+    max-file: ${HOMEX_LOG_MAX_FILES:-5}
+
 x-production-environment: &production-environment
   DJANGO_SETTINGS_MODULE: config.settings.production
   HOMEX_MEDIA_STORAGE: ${HOMEX_MEDIA_STORAGE:-filesystem}
@@ -7,20 +13,42 @@ x-production-environment: &production-environment
 
 services:
   postgres:
+    logging: *json-logging
+    pids_limit: ${HOMEX_POSTGRES_PIDS:-128}
     ports: !reset []
     cpus: ${HOMEX_POSTGRES_CPUS:-1.5}
     mem_limit: ${HOMEX_POSTGRES_MEMORY:-2g}
 
   redis:
+    logging: *json-logging
+    pids_limit: ${HOMEX_REDIS_PIDS:-64}
     ports: !reset []
     cpus: ${HOMEX_REDIS_CPUS:-0.5}
     mem_limit: ${HOMEX_REDIS_MEMORY:-256m}
 
   migrate:
+    logging: *json-logging
     environment: *production-environment
 
+  grant-runtime:
+    logging: *json-logging
+
   api:
+    logging: *json-logging
+    pids_limit: ${HOMEX_API_PIDS:-256}
     environment: *production-environment
+    command:
+      - gunicorn
+      - config.wsgi:application
+      - --bind=0.0.0.0:8000
+      - --workers=${GUNICORN_WORKERS:-2}
+      - --timeout=${GUNICORN_TIMEOUT:-120}
+      - --access-logfile=-
+      - --error-logfile=-
+      - >-
+        --access-logformat={"timestamp":"%(t)s","service":"api",
+        "request_id":"%({x-request-id}i)s","remote_addr":"%(h)s",
+        "method":"%(m)s","uri":"%(U)s","status":%(s)s,"duration_us":%(D)s}
     ports: !reset []
     cpus: ${HOMEX_API_CPUS:-1.0}
     mem_limit: ${HOMEX_API_MEMORY:-1g}
@@ -53,6 +81,8 @@ services:
       start_period: 10s
 
   worker:
+    logging: *json-logging
+    pids_limit: ${HOMEX_WORKER_PIDS:-512}
     environment: *production-environment
     cpus: ${HOMEX_WORKER_CPUS:-2.0}
     mem_limit: ${HOMEX_WORKER_MEMORY:-3g}
@@ -64,11 +94,15 @@ services:
         read_only: true
 
   beat:
+    logging: *json-logging
+    pids_limit: ${HOMEX_BEAT_PIDS:-64}
     environment: *production-environment
     cpus: 0.25
     mem_limit: 256m
 
   frontend-proxy:
+    logging: *json-logging
+    pids_limit: ${HOMEX_FRONTEND_PROXY_PIDS:-128}
     ports: !override
       - "${HOMEX_PRIVATE_BIND:-127.0.0.1}:${HOMEX_PRIVATE_PORT:-443}:8443"
     cpus: ${HOMEX_PROXY_CPUS:-0.5}
@@ -98,11 +132,67 @@ services:
       retries: 20
       start_period: 5s
 
+  monitor:
+    image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d04-9ce7230}
+    profiles: [observability]
+    logging: *json-logging
+    pids_limit: ${HOMEX_MONITOR_PIDS:-64}
+    cpus: ${HOMEX_MONITOR_CPUS:-0.25}
+    mem_limit: ${HOMEX_MONITOR_MEMORY:-128m}
+    environment:
+      <<: *production-environment
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-homex.internal,api}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://homex.internal}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      HOMEX_METRICS_PATH: /var/lib/homex/metrics/homex.prom
+      HOMEX_STORAGE_WARN_PERCENT: ${HOMEX_STORAGE_WARN_PERCENT:-80}
+      HOMEX_STORAGE_CRITICAL_PERCENT: ${HOMEX_STORAGE_CRITICAL_PERCENT:-90}
+    command:
+      - python
+      - /opt/homex-deploy/collect_runtime_metrics.py
+      - --loop-seconds
+      - ${HOMEX_MONITOR_INTERVAL_SECONDS:-60}
+    volumes:
+      - ./scripts/collect_runtime_metrics.py:/opt/homex-deploy/collect_runtime_metrics.py:ro
+      - audio_temporal:/var/lib/homex/audio-temporal:ro
+      - type: bind
+        source: ${HOMEX_MEDIA_HOST_PATH:?HOMEX_MEDIA_HOST_PATH is required}
+        target: /var/lib/homex/media
+        read_only: true
+      - type: bind
+        source: ${HOMEX_METRICS_HOST_PATH:-/tmp/homex-metrics}
+        target: /var/lib/homex/metrics
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import pathlib,time;
+          p=pathlib.Path('/var/lib/homex/metrics/homex.prom');
+          assert p.is_file() and time.time()-p.stat().st_mtime < 180
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [app, data]
+
   publisher:
+    logging: *json-logging
     environment: *production-environment
 
   reconciler:
+    logging: *json-logging
     environment: *production-environment
 
   cleanup:
+    logging: *json-logging
     environment: *production-environment

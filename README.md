@@ -93,3 +93,11 @@ PC, tablet y móvil dispongan de contexto seguro sin comprar dominio ni provisio
 
 La rama histórica `feat/d03-r2-media` no fue fusionada y no representa el plan vigente. D03 ya está
 fusionada; D05 se implementa en `feat/d05-backup-restore` sobre la base técnica D04.
+
+
+## Observabilidad D06
+
+El perfil `observability` añade métricas de dependencias, outbox y almacenamiento sin publicar un
+puerto nuevo. Los logs de proxy/API se correlacionan mediante `X-Request-ID`, los logs Docker rotan
+y los servicios productivos tienen límites CPU, RAM y procesos. Operación e incidentes:
+`docs/OPERATIONS_RUNBOOK.md`. Gate aislado: `scripts/test_d06_resilience.sh`.

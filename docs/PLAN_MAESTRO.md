@@ -909,7 +909,7 @@ D08 alimenta backend F11, NLP F11 y cierre final FE09.
 | D03 | **F09.1** | FE08 | F09 | CERRADA |
 | D04 | F09.1 | FE08 | F09 | CERRADA — CI y validación real completadas |
 | D05 | F09.1 | FE08 | F09 | CERRADA — backup/restore destructivo, integridad y prevalidación verdes |
-| D06 | F09.1 | FE08 | F09 | SIGUIENTE — precondición D05 satisfecha |
+| D06 | F09.1 | FE08 | F09 | EN VALIDACIÓN — implementación local completa |
 | D07 | F09.1 | FE08/FE09 release | F09 | tras D06 |
 | D08 | F10 | FE09 | F10 | tras D07 |
 
@@ -932,7 +932,7 @@ D04 release candidate + HTTPS + Zero Trust/Tunnel — CERRADA
 D05 backup + restore + rollback ----------------------- CERRADA
         |
         v
-D06 observabilidad + resiliencia ----------------------- SIGUIENTE
+D06 observabilidad + resiliencia ----------------------- EN VALIDACIÓN
         |
         v
 D07 release productiva

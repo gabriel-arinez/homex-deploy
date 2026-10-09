@@ -141,3 +141,15 @@ Para la carga esperada se priorizan:
 Si HOMEX crece, el orden de evolución es aumentar recursos, ampliar usuarios privados, mover media a
 S3/R2 si se justifica y separar servicios/DB sólo cuando métricas reales lo indiquen. Ninguno de
 esos pasos cambia las reglas comerciales.
+
+
+## Observabilidad D06
+
+Nginx genera un `request_id`, lo devuelve al cliente y lo propaga a Gunicorn. Ambos escriben JSON
+sin headers de autorización ni cuerpos. Celery conserva su `task_id`; captura, intento y outbox
+permiten seguir el salto asíncrono en PostgreSQL. Docker rota logs por tamaño y cantidad.
+
+El monitor productivo consulta PostgreSQL, Redis y el health API, mide media/audio temporal y
+escribe métricas Prometheus mediante archivo atómico. No publica endpoints ni accede al socket
+Docker. El perfil productivo limita CPU, RAM y PIDs, y el gate D06 prueba fallos únicamente en un
+namespace descartable.

@@ -6,6 +6,11 @@ tls_dir=${HOMEX_TLS_DIR:-/etc/homex/tls}
 nginx_gid=${HOMEX_NGINX_GID:-101}
 force=${HOMEX_TLS_FORCE:-0}
 
+privilege=sudo
+if [ "${HOMEX_TLS_UNPRIVILEGED:-0}" = "1" ]; then
+  case "$tls_dir" in /tmp/*) privilege= ;; *) echo "TLS sin privilegios sólo se permite bajo /tmp" >&2; exit 2;; esac
+fi
+
 case "$hostname" in
   *.*) ;;
   *)
@@ -28,7 +33,11 @@ ca_cert="$tls_dir/homex-root-ca.crt"
 server_key="$tls_dir/$hostname.key"
 server_cert="$tls_dir/$hostname.crt"
 
-sudo install -d -o root -g root -m 0755 "$tls_dir"
+if [ -n "$privilege" ]; then
+  sudo install -d -o root -g root -m 0755 "$tls_dir"
+else
+  install -d -m 0755 "$tls_dir"
+fi
 
 if [ ! -s "$ca_key" ] || [ ! -s "$ca_cert" ]; then
   openssl genrsa -out "$tmp/ca.key" 3072
@@ -37,8 +46,13 @@ if [ ! -s "$ca_key" ] || [ ! -s "$ca_cert" ]; then
     -subj "/CN=HOMEX Local Root CA/O=HOMEX" \
     -out "$tmp/ca.crt"
 
-  sudo install -o root -g root -m 0600 "$tmp/ca.key" "$ca_key"
-  sudo install -o root -g root -m 0644 "$tmp/ca.crt" "$ca_cert"
+  if [ -n "$privilege" ]; then
+    sudo install -o root -g root -m 0600 "$tmp/ca.key" "$ca_key"
+    sudo install -o root -g root -m 0644 "$tmp/ca.crt" "$ca_cert"
+  else
+    install -m 0600 "$tmp/ca.key" "$ca_key"
+    install -m 0644 "$tmp/ca.crt" "$ca_cert"
+  fi
   echo "CA local HOMEX creada."
 else
   echo "CA local HOMEX existente: se reutiliza."
@@ -62,7 +76,7 @@ subjectKeyIdentifier=hash
 authorityKeyIdentifier=keyid,issuer
 EOF
 
-  sudo openssl x509 -req -sha256 -days 365 \
+  $privilege openssl x509 -req -sha256 -days 365 \
     -in "$tmp/server.csr" \
     -CA "$ca_cert" \
     -CAkey "$ca_key" \
@@ -70,8 +84,13 @@ EOF
     -extfile "$tmp/server.ext" \
     -out "$tmp/server.crt"
 
-  sudo install -o root -g "$nginx_gid" -m 0640 "$tmp/server.key" "$server_key"
-  sudo install -o root -g root -m 0644 "$tmp/server.crt" "$server_cert"
+  if [ -n "$privilege" ]; then
+    sudo install -o root -g "$nginx_gid" -m 0640 "$tmp/server.key" "$server_key"
+    sudo install -o root -g root -m 0644 "$tmp/server.crt" "$server_cert"
+  else
+    install -m 0644 "$tmp/server.key" "$server_key"
+    install -m 0644 "$tmp/server.crt" "$server_cert"
+  fi
 fi
 
 openssl verify -CAfile "$ca_cert" "$server_cert"

@@ -24,6 +24,14 @@ def main():
     for forbidden in ('Authorization','request_body','$http_authorization','$request_body'):
         forbid(nginx,forbidden,'nginx/production.conf')
     need(workflow,'resilience-observability:','.github/workflows/ci.yml')
+    deploy=(ROOT/'scripts/deploy.sh').read_text()
+    resilience=(ROOT/'scripts/test_d06_resilience.sh').read_text()
+    metrics=(ROOT/'scripts/collect_runtime_metrics.py').read_text()
+    for fragment in ('--profile operations --profile observability', 'up -d api worker beat frontend-proxy monitor', 'monitor_status', 'Monitor no disponible'):
+        need(deploy,fragment,'scripts/deploy.sh')
+    for fragment in ('[ "$root" != "/tmp/$project" ]', '[ -e "$root" ]', '[ -L "$root" ]', '.d06-owner'):
+        need(resilience,fragment,'scripts/test_d06_resilience.sh')
+    need(metrics,'homex_monitor_collection_healthy','scripts/collect_runtime_metrics.py')
     compose=os.environ.get('COMPOSE_BIN','docker compose').split(); output=subprocess.check_output([*compose,'-f','docker-compose.yml','-f','compose.production.yml','--env-file','.env.production.example','--profile','operations','--profile','observability','config','--format','json'],cwd=ROOT,text=True)
     cfg=json.loads(output)
     for name in ('postgres','redis','api','worker','beat','frontend-proxy','monitor'):

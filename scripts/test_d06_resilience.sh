@@ -27,6 +27,20 @@ url=https://homex.internal:$HOMEX_PRIVATE_PORT
 curl_homex(){ curl --silent --show-error --cacert "$HOMEX_CA_CERT_HOST_PATH" --resolve "homex.internal:$HOMEX_PRIVATE_PORT:127.0.0.1" "$@"; }
 wait_url(){ attempts=0; until curl_homex --fail "$url/api/v1/health/" >/dev/null 2>&1; do attempts=$((attempts+1)); [ "$attempts" -lt 90 ] || return 1; sleep 1; done; }
 python3 scripts/test_d06_contract.py
+# Probar que una ruta de trabajo preexistente NO es borrada por el gate.
+guard_dir="/tmp/${project}-guard"
+if [ -e "$guard_dir" ] || [ -L "$guard_dir" ]; then
+  echo "Guardia D06 preexistente, no se puede ejecutar prueba negativa" >&2
+  exit 2
+fi
+mkdir "$guard_dir"
+printf 'preservar\n' > "$guard_dir/sentinel"
+if D06_WORK_DIR="$guard_dir" sh scripts/test_d06_resilience.sh >/dev/null 2>&1; then
+  echo "D06 aceptó ruta de trabajo ajena" >&2; exit 1
+fi
+test "$(cat "$guard_dir/sentinel")" = preservar
+rmdir "$guard_dir" 2>/dev/null || { rm -f "$guard_dir/sentinel"; rmdir "$guard_dir"; }
+echo d06-workdir-isolation-ok
 if [ "${D06_SKIP_BUILD:-0}" != 1 ]; then run_compose build backend frontend-proxy; fi
 run_compose up -d postgres redis
 run_compose run --rm migrate
@@ -34,6 +48,7 @@ run_compose run --rm grant-runtime
 run_compose up -d api worker frontend-proxy monitor
 wait_url; wait_health worker healthy; wait_health monitor healthy
 grep -q 'homex_dependency_up{dependency="postgres"} 1' "$metrics/homex.prom"
+grep -q 'homex_monitor_collection_healthy 1' "$metrics/homex.prom"
 grep -q 'homex_storage_used_percent{storage="media"}' "$metrics/homex.prom"
 echo d06-metrics-health-ok
 headers=$root/headers; curl_homex --fail -D "$headers" "$url/api/v1/health/" >/dev/null
@@ -53,6 +68,7 @@ if run_compose run --rm --no-deps monitor python /opt/homex-deploy/collect_runti
   echo 'monitor aceptó PostgreSQL caído' >&2; exit 1
 fi
 grep -q 'homex_dependency_up{dependency="postgres"} 0' "$metrics/homex.prom"
+grep -q 'homex_monitor_collection_healthy 0' "$metrics/homex.prom"
 run_compose start postgres; wait_health postgres healthy
 run_compose exec -T api python -c "from django.db import connection; connection.cursor().execute('SELECT 1')"
 wait_health api healthy; wait_url

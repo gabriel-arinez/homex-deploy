@@ -24,7 +24,7 @@ run_compose() {
 restart_writers() {
   if [ -n "$stopped_services" ]; then
     # shellcheck disable=SC2086
-    run_compose up -d $stopped_services >/dev/null
+    run_compose start $stopped_services >/dev/null
   fi
 }
 

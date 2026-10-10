@@ -53,6 +53,9 @@ def main() -> None:
                 raise SystemExit("El servicio ASR conservó un temporal del perfil")
         remaining_audio = sum(1 for item in root.rglob("*") if item.is_file())
 
+    # El gate aislado crea este fixture efímero; nunca borrar audio del operador.
+    if args.audio == Path("/evidence/profile.wav"):
+        args.audio.unlink(missing_ok=True)
     evidence = {
         "schema_version": "1.0",
         "component": "homex-asr",

@@ -27,8 +27,11 @@ def main() -> None:
     need("scripts/deploy.sh",'verify_release_images.py','scripts/backup.sh','scripts/smoke.sh')
     need("scripts/backup_offsite.sh",'sha256sum -c SHA256SUMS','--recipient','$recipient','homex-offsite-encrypted-ok')
     need("scripts/backup_and_offsite.sh",'scripts/backup.sh','scripts/backup_offsite.sh','homex-backup-and-offsite-ok')
+    need("scripts/verify_release_images.py", "verify_compose(refs)", "services[name]", "HOMEX_ENV_FILE")
+    need("scripts/backup_offsite.sh", "HOMEX_OFFSITE_REQUIRE_MOUNT", "mountpoint -q", "GNUPGHOME")
     need("systemd/homex-backup.timer",'Persistent=true','America/La_Paz')
     profile=need("scripts/profile_asr_runtime.py",'worker_concurrency','audio_files_remaining','rss_peak_mib')
+    if "args.audio.unlink" in profile: raise SystemExit("Perfil destruye el audio original")
     for forbidden in ('\"transcript\":', '\"text\":', '\"audio_path\":'):
         if forbidden in profile: raise SystemExit(f"Perfil ASR expone {forbidden}")
     if 'networks: [data]' not in compose or 'internal: true' not in compose:

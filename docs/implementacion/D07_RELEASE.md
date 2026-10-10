@@ -139,3 +139,15 @@ destino externo real, perfil del hardware definitivo y la ventana autorizada par
 acceso de dispositivos y smoke del host. Mientras falte cualquiera, el manifiesto permanece
 `candidate`; Backend F10, NLP F10 y FE09 reciben evidencia técnica pero conservan su condición
 productiva. No se adelanta D08 ni el piloto.
+
+## Evidencia remota de implementación
+
+- commit de implementación: `b3c857772f046c340d55be7794a853315715c33c`;
+- workflow push `38010446638`: **13/13 jobs verdes**;
+- workflow PR `38010466856`: **13/13 jobs verdes**;
+- build limpio y labels OCI: verde;
+- integración, staging, media, release privada, recuperación y resiliencia: verdes;
+- contrato D07/copia cifrada, ASR, manifiesto, YAML, Compose y gitleaks: verdes;
+- perfil ASR agregado publicado como artefacto temporal del workflow.
+
+PR: https://github.com/gabriel-arinez/homex-deploy/pull/8

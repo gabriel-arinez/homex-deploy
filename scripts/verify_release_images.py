@@ -54,10 +54,16 @@ def inspect(reference: str) -> dict:
 
 def verify_compose(refs: dict[str, str]) -> None:
     if len(sys.argv) == 1:
-        return
-    if len(sys.argv) != 3 or sys.argv[1] != "--compose-json":
-        raise SystemExit("Uso: verify_release_images.py [--compose-json archivo]")
-    services = json.loads(Path(sys.argv[2]).read_text())["services"]
+        env_file = os.environ.get('HOMEX_ENV_FILE', '.env.production')
+        if not Path(env_file).exists():
+            return
+        compose_files = os.environ.get('HOMEX_COMPOSE_FILES', '-f docker-compose.yml -f compose.production.yml').split()
+        command = ['docker', 'compose', *compose_files, '--env-file', env_file, 'config', '--format', 'json']
+        services = json.loads(subprocess.check_output(command, text=True))['services']
+    else:
+        if len(sys.argv) != 3 or sys.argv[1] != '--compose-json':
+            raise SystemExit('Uso: verify_release_images.py [--compose-json archivo]')
+        services = json.loads(Path(sys.argv[2]).read_text())['services']
     for name, expected in (
         ("api", refs["api"]),
         ("worker", refs["worker"]),

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 MANIFEST = Path("releases/manifest.yaml")
 
@@ -51,9 +52,26 @@ def inspect(reference: str) -> dict:
         raise SystemExit(f"Digest OCI no coincide con imagen local: {reference}")
     return data
 
+def verify_compose(refs: dict[str, str]) -> None:
+    if len(sys.argv) == 1:
+        return
+    if len(sys.argv) != 3 or sys.argv[1] != "--compose-json":
+        raise SystemExit("Uso: verify_release_images.py [--compose-json archivo]")
+    services = json.loads(Path(sys.argv[2]).read_text())["services"]
+    for name, expected in (
+        ("api", refs["api"]),
+        ("worker", refs["worker"]),
+        ("frontend-proxy", refs["frontend"]),
+    ):
+        actual = services[name]["image"]
+        if actual != expected:
+            raise SystemExit(f"Compose {name} utiliza {actual}, manifiesto exige {expected}")
+
+
 def main() -> None:
     status=value("release","status")
     refs={"api":image_ref("api"),"worker":image_ref("worker"),"frontend":image_ref("frontend_proxy")}
+    verify_compose(refs)
     if refs["api"] != refs["worker"]:
         raise SystemExit("API y worker deben compartir la imagen backend")
     backend=inspect(refs["api"]); frontend=inspect(refs["frontend"])

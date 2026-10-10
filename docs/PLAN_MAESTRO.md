@@ -865,7 +865,8 @@ D07 aporta evidencia para backend F10, NLP F10 y FE09 Release.
 
 ## Cierre
 
-`docs/implementacion/D07_RELEASE.md`.
+`docs/implementacion/D07_RELEASE.md`. La implementación automatizada vive en la candidata
+`0.7.0-d07-rc1`; la promoción productiva exige digests y evidencia física del host.
 
 ---
 

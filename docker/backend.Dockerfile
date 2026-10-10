@@ -1,6 +1,11 @@
 # syntax=docker/dockerfile:1.7
 FROM ghcr.io/astral-sh/uv:0.8.22-python3.11-bookworm-slim@sha256:2c4b9b297693b09abc2286fb3c1df78e0de9d48d371abc3e83f9b1913037801a
 
+ARG HOMEX_BACKEND_REVISION
+LABEL org.opencontainers.image.source="https://github.com/gabriel-arinez/homex-backend" \
+      org.opencontainers.image.revision="$HOMEX_BACKEND_REVISION" \
+      org.opencontainers.image.version="0.7.0-d07-rc1"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
@@ -27,6 +32,7 @@ COPY --from=backend scripts/ ./scripts/
 COPY scripts/apply_runtime_privileges.py /opt/homex-deploy/apply_runtime_privileges.py
 COPY scripts/verify_expected_migrations.py /opt/homex-deploy/verify_expected_migrations.py
 COPY scripts/verify_media_integrity.py /opt/homex-deploy/verify_media_integrity.py
+COPY scripts/profile_asr_runtime.py /opt/homex-deploy/profile_asr_runtime.py
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --extra worker \

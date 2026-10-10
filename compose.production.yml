@@ -9,6 +9,7 @@ x-production-environment: &production-environment
   HOMEX_MEDIA_STORAGE: ${HOMEX_MEDIA_STORAGE:-filesystem}
   HOMEX_MEDIA_ROOT: /var/lib/homex/media
   HOMEX_MEDIA_URL: /media/
+  HOMEX_AUDIO_TEMP_ROOT: /var/lib/homex/audio-temporal
   HOMEX_HTTPS_ENABLED: ${HOMEX_HTTPS_ENABLED:-1}
 
 services:
@@ -133,7 +134,7 @@ services:
       start_period: 5s
 
   monitor:
-    image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d04-9ce7230}
+    image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-bc37589}
     profiles: [observability]
     logging: *json-logging
     pids_limit: ${HOMEX_MONITOR_PIDS:-64}

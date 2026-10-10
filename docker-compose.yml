@@ -20,12 +20,14 @@ x-backend-environment: &backend-environment
   HOMEX_ASR_COMPUTE_TYPE: ${HOMEX_ASR_COMPUTE_TYPE:-int8}
 
 x-backend-image: &backend-image
-  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d02-0659dc5}
+  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-bc37589}
   build:
     context: .
     dockerfile: docker/backend.Dockerfile
     additional_contexts:
       backend: ${BACKEND_CONTEXT:-../homex-backend}
+    args:
+      HOMEX_BACKEND_REVISION: ${HOMEX_BACKEND_REVISION:-bc375894036d30cefbc8cdf7c512315aaf1ab971}
 
 services:
   postgres:
@@ -141,7 +143,7 @@ services:
     <<: *backend-image
     hostname: homex-worker
     environment: *backend-environment
-    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--hostname=worker@%h"]
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--hostname=worker@%h", "--concurrency=1"]
     volumes:
       - audio_temporal:/var/lib/homex/audio-temporal
       - media_persistente:/var/lib/homex/media
@@ -179,13 +181,14 @@ services:
     networks: [data]
 
   frontend-proxy:
-    image: homex/frontend-proxy:${HOMEX_FRONTEND_IMAGE_TAG:-d02-57c32d3}
+    image: homex/frontend-proxy:${HOMEX_FRONTEND_IMAGE_TAG:-d07-479a092}
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
       additional_contexts:
         frontend: ${FRONTEND_CONTEXT:-../homex-frontend}
       args:
+        HOMEX_FRONTEND_REVISION: ${HOMEX_FRONTEND_REVISION:-479a092462b36a90006eb1c52f9570ea63084bab}
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL is required}
     ports:
       - "${STAGING_HTTP_BIND:-127.0.0.1}:${STAGING_HTTP_PORT:-8080}:8080"

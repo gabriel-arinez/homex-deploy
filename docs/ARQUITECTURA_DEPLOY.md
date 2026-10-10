@@ -44,18 +44,19 @@ HTTPS sí es obligatorio en D04: el navegador necesita un contexto seguro para m
 `crypto.randomUUID()` y otras APIs sensibles. HOMEX lo resuelve con una CA privada instalada sólo
 en los dispositivos autorizados.
 
-## Fuentes de la release candidate D04
+## Fuentes de la release candidata D07
 
 | Componente | Revisión/versión |
 | --- | --- |
-| backend | `9ce723048d98a3925be45d9c359a25e6be7b19f3` |
-| frontend | `deba1de244395dbdcb266f03026630b403768d71` |
-| NLP source | `8d1750b2d1d26f6d90da10603216b7926bdaf820` |
+| backend | `bc375894036d30cefbc8cdf7c512315aaf1ab971` |
+| frontend | `479a092462b36a90006eb1c52f9570ea63084bab` |
+| NLP source | `79efeaf6a8ca738eb3abce414850f973b1962fd8` |
 | NLP runtime | `0.1.0` |
 | ASR | `Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120` |
-| release | `0.4.0-d04-rc1` |
+| release | `0.7.0-d07-rc1` (`candidate`) |
 
-D00–D03 permanecen como baseline cerrado. D04 ensambla la primera topología productiva privada.
+D07 conserva la topología privada probada en D04 y fija los cierres F10/FE09. La promoción a
+`released` exige imágenes publicadas por digest y validación en el servidor objetivo.
 
 ## Persistencia
 

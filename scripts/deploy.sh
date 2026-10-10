@@ -12,6 +12,7 @@ run_compose() {
 }
 
 run_compose config --quiet
+python3 scripts/verify_release_images.py
 run_compose up -d postgres redis
 
 # shellcheck disable=SC2016

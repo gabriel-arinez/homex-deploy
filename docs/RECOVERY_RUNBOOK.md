@@ -114,3 +114,27 @@ Al menos una vez por release y periódicamente en operación:
 
 `scripts/test_d05_recovery.sh` automatiza exactamente ese ensayo sobre un namespace Compose
 aislado `homex-d05-*` y nunca acepta credenciales productivas.
+
+## Copia externa cifrada D07
+
+La unidad local verificada se cifra sólo para una clave pública GPG y se publica en un filesystem o
+mount externo mediante rename:
+
+```sh
+export HOMEX_OFFSITE_DESTINATION=/mnt/homex-offsite
+export HOMEX_OFFSITE_GPG_RECIPIENT=<fingerprint-publico>
+export HOMEX_OFFSITE_GPG_HOME=/etc/homex/backup-gnupg
+scripts/backup_and_offsite.sh
+```
+
+El homedir del servidor debe contener únicamente la clave pública de recuperación. La clave privada
+se custodia fuera del host HOMEX. El destino debe ser físicamente independiente; una carpeta en el
+mismo disco no satisface recuperación ante pérdida del servidor. Cada `.tar.gz.gpg` tiene un
+`.sha256` asociado. Para ensayar recuperación, copie ambos a un host aislado, verifique el checksum,
+descifre con la clave privada y ejecute el restore normal sobre la unidad extraída. Nunca descifre
+sobre el servidor productivo ni incluya secretos/TLS dentro de la unidad de aplicación.
+
+`systemd/homex-backup.service` y `.timer` versionan el flujo diario. Antes de instalarlos, adapte
+usuario, checkout y mounts; cree `/etc/homex/backup.env` con permisos `0600`, ejecute
+`systemd-analyze verify`, un arranque manual y un restore aislado. `Persistent=true` recupera una
+ejecución perdida cuando el host vuelve a encenderse.

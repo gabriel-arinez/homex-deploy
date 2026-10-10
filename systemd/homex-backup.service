@@ -1,0 +1,22 @@
+[Unit]
+Description=HOMEX backup PostgreSQL/media and encrypted off-site copy
+RequiresMountsFor=/srv/homex/backups /mnt/homex-offsite
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=homex
+Group=homex
+WorkingDirectory=/opt/homex-deploy
+EnvironmentFile=/etc/homex/backup.env
+UMask=0077
+ExecStart=/opt/homex-deploy/scripts/backup_and_offsite.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/homex/backups /mnt/homex-offsite
+
+[Install]
+WantedBy=multi-user.target

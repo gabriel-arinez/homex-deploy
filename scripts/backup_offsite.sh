@@ -12,6 +12,9 @@ destination=${HOMEX_OFFSITE_DESTINATION:?HOMEX_OFFSITE_DESTINATION is required}
 recipient=${HOMEX_OFFSITE_GPG_RECIPIENT:?HOMEX_OFFSITE_GPG_RECIPIENT is required}
 gpg_home=${HOMEX_OFFSITE_GPG_HOME:-}
 
+if [ "${HOMEX_OFFSITE_REQUIRE_MOUNT:-0}" = "1" ]; then
+  mountpoint -q "$destination" || { echo "Destino externo no montado: $destination" >&2; exit 2; }
+fi
 [ -d "$source_dir" ] || { echo "Backup inexistente: $source_dir" >&2; exit 1; }
 for required in database.dump media.tar.gz media-manifest.json release-manifest.yaml recovery.json SHA256SUMS; do
   [ -f "$source_dir/$required" ] || { echo "Backup incompleto: falta $required" >&2; exit 1; }
@@ -44,15 +47,13 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-gpg_args=""
 if [ -n "$gpg_home" ]; then
-  gpg_args="--homedir $gpg_home"
+  export GNUPGHOME="$gpg_home"
 fi
 # FIFO evita una copia intermedia en claro y permite comprobar por separado tar y GPG.
 mkfifo -m 0600 "$fifo"
 # El fingerprint es público. Las claves privadas nunca son argumentos ni archivos de esta unidad.
-# shellcheck disable=SC2086
-gpg $gpg_args --batch --yes --trust-model always --recipient "$recipient" \
+gpg --batch --yes --trust-model always --recipient "$recipient" \
   --output "$temporary" --encrypt "$fifo" &
 gpg_pid=$!
 if ! tar -C "$(dirname "$source_dir")" -czf "$fifo" "$(basename "$source_dir")"; then
@@ -68,8 +69,8 @@ fi
 rm -f -- "$fifo"
 [ -s "$temporary" ] || { echo "La copia cifrada quedó vacía" >&2; exit 1; }
 sha256sum "$temporary" | sed "s#  $temporary#  $name#" > "$temporary.sha256"
-mv "$temporary" "$final"
 mv "$temporary.sha256" "$checksum"
+mv "$temporary" "$final"
 (
   cd "$destination"
   sha256sum -c "$(basename "$checksum")" >/dev/null

@@ -372,6 +372,8 @@ transacción PostgreSQL revertida y colas operativas intactas
 el mismo escenario, sin detener Redis ni ejecutar ASR. Siguiente control:
 reconciliación de publicaciones antiguas y reenvío seguro.
 
+**Reconciliación y republicación Outbox D04/D07:** ambas imágenes superaron nueve comprobaciones del ensayo controlado con un intento sintético antiguo en estado `PROCESANDO`: recuperación a `PENDIENTE`, segunda reconciliación sin nuevas acciones, republicación de un solo mensaje en una cola Redis aislada conservando la clave de tarea y ausencia de publicación duplicada. Los mensajes de prueba se retiraron, los datos PostgreSQL se revirtieron y las colas operativas permanecieron vacías. Evidencias: `homex-d07-outbox-reconciliacion-d07-ok`, `homex-d07-outbox-republicacion-d07-validada-ok`, `homex-d07-outbox-reconciliacion-d04-ok` y `homex-d07-outbox-republicacion-d04-validada-ok`. No se ejecutaron tareas ASR ni hubo consumo de esta cola por el worker. El ensayo no prueba idempotencia tras consumo por el worker ni caída integral de Redis.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

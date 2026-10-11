@@ -25,6 +25,36 @@ if [ "${HOMEX_DEPLOY_SKIP_BACKUP:-0}" != "1" ] && \
     COMPOSE_BIN="$compose" COMPOSE_PROJECT_NAME="$project" scripts/backup.sh
 fi
 
+# El backup D05 reanuda escritores para conservar su semántica operacional.
+# Antes de migrar, detenerlos nuevamente y mantenerlos fuera hasta iniciar D07.
+# Si la migración comienza, NO reactivar automáticamente procesos D04 ante un fallo:
+# el esquema podría haber cambiado y exige recuperación según runbook.
+migration_started=0
+stopped_writers=
+recover_before_migration() {
+  status=$?
+  trap - EXIT
+  if [ "$status" -ne 0 ] && [ "$migration_started" -eq 0 ] && [ -n "$stopped_writers" ]; then
+    # shellcheck disable=SC2086
+    run_compose start $stopped_writers || true
+  fi
+  if [ "$status" -ne 0 ] && [ "$migration_started" -eq 1 ]; then
+    echo "Despliegue interrumpido tras iniciar migraciones; NO reiniciar escritores D04. Seguir RECOVERY_RUNBOOK.md." >&2
+  fi
+  exit "$status"
+}
+trap recover_before_migration EXIT
+running=$(run_compose ps --status running --services)
+for writer in api worker beat publisher reconciler cleanup; do
+  if printf '%s\n' "$running" | grep -qx "$writer"; then
+    stopped_writers="$stopped_writers $writer"
+  fi
+done
+if [ -n "$stopped_writers" ]; then
+  # shellcheck disable=SC2086
+  run_compose stop $stopped_writers
+fi
+migration_started=1
 run_compose run --rm migrate
 run_compose run --rm grant-runtime
 run_compose up -d api worker beat frontend-proxy monitor

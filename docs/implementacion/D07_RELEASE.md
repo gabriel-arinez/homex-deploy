@@ -167,6 +167,34 @@ despliegue D07 productivo ya haya ocurrido**. Queda ensayar en namespace
 aislado la recuperación de una migración fallida y verificar que el servicio
 diario de backup no coincida con la ventana de promoción.
 
+### Evidencia de ensayo D07 aislado en host (11-10-2026)
+
+Se ejecutó el namespace `homex-d07-ensayo`, independiente de
+`homex-prod`, con PostgreSQL 17.6, Redis 8.2.1, TLS temporal y volúmenes
+propios bajo `/tmp/homex-d07-ensayo`. Evidencias observadas:
+
+- Migraciones iniciales aplicadas sin fallos; nueva ejecución sin cambios:
+  **52 migraciones** registradas, **34 tablas** de sistema.
+- `runtime-privileges-ok` y rechazo de conexión inválida del migrador sin
+  cambios en el historial de migraciones.
+- Backup D07 `homex-20261011T051035Z`, con checksum correcto para los cinco
+  archivos exigidos y tabla de ensayo incluida en el dump.
+- Restauración destructiva **solamente en el namespace de prueba**, autorizada
+  para ese entorno: `homex-restore-ok`, registro original recuperado,
+  **52 migraciones y 35 tablas** (incluida la tabla de ensayo),
+  `db-media-integrity-ok`.
+- Validación posrestauración: `manage.py check` sin incidencias;
+  `migrate --check` correcto; `django-database-ok`; cinco checksums
+  correctos; `homex-d07-verificacion-final-ok`.
+- Los siete contenedores productivos D04 se observaron operativos durante
+  las verificaciones, sin intervención del ensayo.
+
+Alcance: prueba de instalación D07 limpia, fallo de conexión previa y
+restauración de backup **D07 a D07**. No valida todavía transición de datos
+D04 → D07, rollback de código/imágenes entre versiones ni fallo a mitad de
+una migración. El entorno de ensayo queda conservado hasta autorizar limpieza
+aislada; la promoción productiva sigue pendiente.
+
 ## Seguridad y operación
 
 Se mantienen acceso privado Cloudflare, CA interna, cabeceras, límites de upload, logs sin bodies o

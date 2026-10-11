@@ -12,7 +12,8 @@ run_compose() {
 }
 
 run_compose config --quiet
-python3 scripts/verify_release_images.py
+HOMEX_REQUIRE_COMPOSE_MATCH=1 HOMEX_ENV_FILE="$env_file" HOMEX_COMPOSE_FILES="$compose_files" \
+  python3 scripts/verify_release_images.py
 run_compose up -d postgres redis
 
 # shellcheck disable=SC2016

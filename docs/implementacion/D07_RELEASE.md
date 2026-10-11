@@ -255,6 +255,20 @@ API accesible con HTTPS 200 y el resto de contenedores intactos
 contiene sólo un `model.bin` vacío y el resultado **no** demuestra capacidad
 de procesar audio.
 
+La programación efectiva de Celery Beat se inspeccionó en ambas imágenes:
+tres tareas idénticas (`capturas.publicar_outbox` cada 5 s,
+`capturas.reconciliar_outbox` cada 60 s y
+`capturas.limpiar_audio_temporal` cada 900 s), zona
+`America/La_Paz` y `PersistentScheduler`. Para evitar publicaciones
+durante la prueba, Beat se ejecutó mediante un proceso temporal con
+programación vaciada **después de cargar** la configuración de Celery.
+Tanto D04 (`homex-d07-beat-d04-controlado-ok`) como D07
+(`homex-d07-beat-d07-controlado-ok`) mostraron inicio real
+(`celery beat v5.5.3`, `beat: Starting...`) y finalizaron a los
+15 segundos por `timeout` (código 124). El servicio permanente
+`beat` no se inició y producción permaneció sin cambios.
+**No se comprobó publicación ni ejecución efectiva de tareas periódicas.**
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

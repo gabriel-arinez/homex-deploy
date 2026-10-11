@@ -48,8 +48,12 @@ def inspect(reference: str) -> dict:
     except subprocess.CalledProcessError as exc:
         raise SystemExit(f"Imagen local ausente: {local_ref}") from exc
     data=json.loads(payload)[0]
-    if (os.environ.get("HOMEX_RELEASE_IMAGE_BUILD_MODE") != "1" and "@sha256:" in reference and reference not in data.get("RepoDigests",[])):
-        raise SystemExit(f"Digest OCI no coincide con imagen local: {reference}")
+    if os.environ.get("HOMEX_RELEASE_IMAGE_BUILD_MODE") != "1" and "@sha256:" in reference:
+        repositorio, digest = reference.split("@", 1)
+        repositorio = repositorio.rsplit(":", 1)[0]
+        referencia_canonica = f"{repositorio}@{digest}"
+        if referencia_canonica not in data.get("RepoDigests", []):
+            raise SystemExit(f"Digest OCI no coincide con imagen local: {reference}")
     return data
 
 def verify_compose(refs: dict[str, str]) -> None:

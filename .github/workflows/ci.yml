@@ -1,5 +1,9 @@
 name: CI
 
+env:
+  HOMEX_BACKEND_IMAGE_REF: homex/backend:d07-3e05362
+  HOMEX_FRONTEND_IMAGE_REF: homex/frontend-proxy:d07-479a092
+
 on:
   push:
   pull_request:

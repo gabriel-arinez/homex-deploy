@@ -1,11 +1,6 @@
 name: Publish D07 RC2
 
 on:
-  push:
-    branches:
-      - feat/d07-release-productiva
-    paths:
-      - .github/workflows/publish-d07-rc2.yml
   workflow_dispatch:
 
 permissions:

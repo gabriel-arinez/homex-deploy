@@ -1,0 +1,128 @@
+name: Publish D07 RC2
+
+on:
+  push:
+    branches:
+      - feat/d07-release-productiva
+    paths:
+      - .github/workflows/publish-d07-rc2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-d07-rc2
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/feat/d07-release-productiva'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout deploy
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned backend
+        uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-backend
+          ref: 3e05362ac49c170963a8dc1d32b4d612e491112f
+          path: sources/backend
+
+      - name: Checkout pinned frontend
+        uses: actions/checkout@v4
+        with:
+          repository: gabriel-arinez/homex-frontend
+          ref: 479a092462b36a90006eb1c52f9570ea63084bab
+          path: sources/frontend
+
+      - name: Validate release
+        run: |
+          python3 scripts/test_d07_contract.py
+          docker compose \
+            -f docker-compose.yml \
+            -f compose.production.yml \
+            --env-file .env.production.example \
+            config --quiet
+
+      - name: Build RC2 images
+        env:
+          BACKEND_CONTEXT: ./sources/backend
+          FRONTEND_CONTEXT: ./sources/frontend
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f compose.production.yml \
+            --env-file .env.production.example \
+            build --no-cache backend frontend-proxy
+
+      - name: Verify image provenance
+        run: |
+          test "$(docker image inspect homex/backend:d07-3e05362 \
+            --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+            = "3e05362ac49c170963a8dc1d32b4d612e491112f"
+
+          test "$(docker image inspect homex/frontend-proxy:d07-479a092 \
+            --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+            = "479a092462b36a90006eb1c52f9570ea63084bab"
+
+          HOMEX_RELEASE_IMAGE_EVIDENCE=/tmp/d07-images.json \
+            python3 scripts/verify_release_images.py
+
+      - name: Authenticate to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish and record digests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BACKEND=ghcr.io/gabriel-arinez/homex-backend:0.7.0-d07-rc2
+          FRONTEND=ghcr.io/gabriel-arinez/homex-frontend-proxy:0.7.0-d07-rc2
+
+          docker tag homex/backend:d07-3e05362 "$BACKEND"
+          docker tag homex/frontend-proxy:d07-479a092 "$FRONTEND"
+
+          docker push "$BACKEND" | tee /tmp/backend-push.txt
+          docker push "$FRONTEND" | tee /tmp/frontend-push.txt
+
+          BACKEND_DIGEST=$(sed -n \
+            's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' \
+            /tmp/backend-push.txt | tail -n 1)
+          FRONTEND_DIGEST=$(sed -n \
+            's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' \
+            /tmp/frontend-push.txt | tail -n 1)
+
+          test -n "$BACKEND_DIGEST"
+          test -n "$FRONTEND_DIGEST"
+
+          docker buildx imagetools inspect \
+            "ghcr.io/gabriel-arinez/homex-backend@$BACKEND_DIGEST"
+          docker buildx imagetools inspect \
+            "ghcr.io/gabriel-arinez/homex-frontend-proxy@$FRONTEND_DIGEST"
+
+          {
+            echo "## D07 RC2 — GHCR"
+            echo
+            echo "Backend: \`ghcr.io/gabriel-arinez/homex-backend@$BACKEND_DIGEST\`"
+            echo
+            echo "Frontend: \`ghcr.io/gabriel-arinez/homex-frontend-proxy@$FRONTEND_DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          printf 'BACKEND=%s\nFRONTEND=%s\n' \
+            "$BACKEND_DIGEST" "$FRONTEND_DIGEST" \
+            > ghcr-digests.txt
+
+      - name: Save digest evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: d07-rc2-ghcr-digests
+          path: ghcr-digests.txt
+          retention-days: 30

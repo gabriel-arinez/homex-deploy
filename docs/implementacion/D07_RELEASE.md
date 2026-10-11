@@ -229,9 +229,22 @@ Las comprobaciones de montaje permitieron solo media temporal aislada,
 volúmenes con prefijo de proyecto y los dos archivos de configuración del
 repositorio montados en modo lectura. Ninguna API del ensayo publicó puertos.
 
+También se ensayó el proxy HTTPS del frontend con la CA autofirmada
+**exclusiva** de `/tmp/homex-d07-upgrade/tls` y publicación en
+`127.0.0.1:19444`. El proxy D04 inició `healthy` y retornó HTTP 200
+con validación TLS (`homex-d07-frontend-d04-https-ok`). Se recreó **solo**
+el frontend con imagen D07: `healthy`, frontend y
+`/api/v1/health/` HTTP 200 mediante HTTPS, sin recrear API/PostgreSQL/Redis
+(`homex-d07-frontend-d07-https-ok`). Finalmente el proxy volvió a la
+imagen D04: `healthy`, HTTP 200 en ambos endpoints, sin recreaciones de
+API/PostgreSQL/Redis (`homex-d07-frontend-rollback-d04-ok`). Los
+certificados eran temporales del ensayo y no se usaron certificados
+productivos. La advertencia de Nginx al intentar modificar una
+configuración de solo lectura no impidió el arranque ni el healthcheck.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
-worker/beat/frontend, ni restauración desde una unidad anterior a la
+worker/beat, ni restauración desde una unidad anterior a la
 actualización, ni ensayos de fallo a mitad de migración. No se modificó
 `homex-prod`. El namespace de ensayo queda pendiente de limpieza al
 concluir los gates.

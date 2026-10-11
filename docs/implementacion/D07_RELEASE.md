@@ -327,6 +327,18 @@ se corrigió para consumir el trabajo creado automáticamente por
 `trg_crear_outbox_intento`. **Pendiente:** publicación real en Redis,
 entrega/consumo seguro y pruebas de fallos de broker, sin activar ASR.
 
+La publicación **real** de Outbox D07 hacia Redis aislado pasó
+(`homex-d07-outbox-redis-publicacion-d07-ok` y
+`homex-d07-outbox-redis-d07-validacion-ok`): la función
+`publicar_pendientes` envió `capturas.procesar_intento` a una cola
+temporal exclusiva no consumida por el worker; se validaron nombre,
+identificador y argumentos del mensaje, se retiró el mensaje de prueba
+y la transacción PostgreSQL revirtió captura, intento y outbox
+sintéticos. Las colas operativas `celery`/`unacked` terminaron vacías.
+Los siete servicios productivos permanecieron activos. Este ensayo
+**no** ejecutó ASR ni validó consumo de la tarea; queda pendiente
+paridad de publicación real D04 y escenarios de fallo de broker.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

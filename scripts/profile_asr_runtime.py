@@ -55,7 +55,7 @@ def main() -> None:
 
     # El gate aislado crea este fixture efímero; nunca borrar audio del operador.
     if args.audio == Path("/evidence/profile.wav"):
-        args.audio.unlink(missing_ok=True)
+        Path("/evidence/profile.wav").unlink(missing_ok=True)
     evidence = {
         "schema_version": "1.0",
         "component": "homex-asr",

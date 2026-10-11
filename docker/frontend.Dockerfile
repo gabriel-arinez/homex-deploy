@@ -26,7 +26,7 @@ FROM nginxinc/nginx-unprivileged:1.29.3-alpine3.22@sha256:5aea7cc516b419e3526f47
 ARG HOMEX_FRONTEND_REVISION
 LABEL org.opencontainers.image.source="https://github.com/gabriel-arinez/homex-frontend" \
       org.opencontainers.image.revision="$HOMEX_FRONTEND_REVISION" \
-      org.opencontainers.image.version="0.7.0-d07-rc1"
+      org.opencontainers.image.version="0.7.0-d07-rc2"
 
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/dist/ /usr/share/nginx/html/

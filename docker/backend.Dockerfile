@@ -4,7 +4,7 @@ FROM ghcr.io/astral-sh/uv:0.8.22-python3.11-bookworm-slim@sha256:2c4b9b297693b09
 ARG HOMEX_BACKEND_REVISION
 LABEL org.opencontainers.image.source="https://github.com/gabriel-arinez/homex-backend" \
       org.opencontainers.image.revision="$HOMEX_BACKEND_REVISION" \
-      org.opencontainers.image.version="0.7.0-d07-rc1"
+      org.opencontainers.image.version="0.7.0-d07-rc2"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

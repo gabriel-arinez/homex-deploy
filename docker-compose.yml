@@ -20,14 +20,14 @@ x-backend-environment: &backend-environment
   HOMEX_ASR_COMPUTE_TYPE: ${HOMEX_ASR_COMPUTE_TYPE:-int8}
 
 x-backend-image: &backend-image
-  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-bc37589}
+  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-3e05362}
   build:
     context: .
     dockerfile: docker/backend.Dockerfile
     additional_contexts:
       backend: ${BACKEND_CONTEXT:-../homex-backend}
     args:
-      HOMEX_BACKEND_REVISION: ${HOMEX_BACKEND_REVISION:-bc375894036d30cefbc8cdf7c512315aaf1ab971}
+      HOMEX_BACKEND_REVISION: ${HOMEX_BACKEND_REVISION:-3e05362ac49c170963a8dc1d32b4d612e491112f}
 
 services:
   postgres:

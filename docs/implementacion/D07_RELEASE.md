@@ -460,3 +460,96 @@ productiva. No se adelanta D08 ni el piloto.
 - perfil ASR agregado publicado como artefacto temporal del workflow.
 
 PR: https://github.com/gabriel-arinez/homex-deploy/pull/8
+
+
+## Actualización de candidata RC2 — Backend con fencing token
+
+La candidata `0.7.0-d07-rc2` sustituye a RC1 para las siguientes
+validaciones. Las evidencias históricas RC1 se conservan.
+
+### Identificación
+
+- Backend: `3e05362ac49c170963a8dc1d32b4d612e491112f`.
+- Imagen API/worker: `homex/backend:d07-3e05362`.
+- Migración nueva: `capturas.0008_propiedad_ejecucion`.
+- Frontend: `479a092462b36a90006eb1c52f9570ea63084bab`.
+- NLP: `79efeaf6a8ca738eb3abce414850f973b1962fd8`.
+- Estado del manifiesto: `candidate`.
+- Producción `homex-prod`: continúa ejecutando D04.
+
+### Evidencias funcionales RC2
+
+Se realizaron pruebas en el namespace aislado `homex-d07-upgrade`,
+con API y worker RC2 temporales y cola Celery exclusiva.
+
+Resultados verificados:
+
+- Creación de proforma y capturas sintéticas mediante servicios reales.
+- Idempotencia de recepción y rechazo de reutilización conflictiva de claves.
+- Publicación Outbox mediante Celery y procesamiento NLP.
+- Reentrega duplicada sin reprocesamiento.
+- Reconciliación y republicación de trabajos pendientes.
+- Exclusión de ejecuciones concurrentes y fencing mediante token UUID.
+- Cierre de los cuatro trabajos Outbox del ensayo.
+- Cuatro capturas completadas, cuatro intentos finalizados y tres ItemIA.
+
+Las pruebas funcionales no sustituyen ASR real, pruebas de carga,
+caídas de procesos ni la validación de dispositivos finales.
+
+### Recuperación y compatibilidad
+
+Se verificó el respaldo PostgreSQL pre-0008 mediante SHA-256 y
+se restauró en `homex-d07-rc2-restore-pg`.
+
+- Recuperación correcta de siete migraciones de Capturas.
+- Compatibilidad ORM real con el backend D04.
+- Migración 0007 a 0008 en otro PostgreSQL independiente,
+  `homex-d07-rc2-migration-pg`.
+- Ocho migraciones tras la actualización, columna UUID correcta
+  y ausencia de operaciones de migración pendientes.
+- Conservación de registros comerciales anteriores a RC2.
+
+Se respaldó también el estado RC2 actual y se restauró en
+`homex-d07-rc2-current-restore-pg`.
+
+- Recuperación de dos proformas, cuatro capturas,
+  cuatro intentos, cuatro trabajos Outbox y tres ItemIA.
+- Coincidencia de conteos y huellas de las cinco tablas comparadas.
+- Coincidencia del historial completo de migraciones.
+- Reconstrucción de `homex_migrator` y `homex_runtime`.
+- Coincidencia de 246 registros de auditoría de privilegios
+  efectivos, propietarios y permisos predeterminados auditados.
+- Lectura ORM real desde Django RC2 mediante `homex_runtime`.
+- Gunicorn RC2 conectado a la restauración:
+  `/api/v1/health/` y `/api/v1/ready/` respondieron HTTP 200;
+  PostgreSQL y almacenamiento multimedia reportaron `ok`.
+
+Los PostgreSQL de restauración utilizaron volúmenes exclusivos,
+red Docker `none` y ningún puerto publicado.
+
+### Evidencia multimedia
+
+El directorio multimedia del ensayo RC2 estaba vacío.
+Se validó su archivado y recuperación y, por separado,
+se respaldaron y restauraron dos archivos sintéticos,
+comprobando SHA-256 y estructura de directorios.
+
+No se ha demostrado todavía recuperación integrada de medios
+persistentes asociados a registros comerciales bajo escrituras
+concurrentes. La prueba HTTP utilizó almacenamiento temporal
+escribible, no el volumen multimedia restaurado.
+
+### Restricciones y pendientes de RC2
+
+- Reconstruir y validar imagen frontend-proxy con metadatos OCI RC2.
+- Publicar imágenes definitivas y fijar sus `RepoDigest`.
+- Perfilar ASR real en el hardware objetivo.
+- Ejecutar smoke integral de voz, NLP, HITL y medios persistentes.
+- Validar acceso PC, móvil y tablet mediante Zero Trust.
+- Ensayar recuperación y rollback operacional integral de servicios.
+- Comprobar retención, alertas y recuperación ante fallos del
+  almacenamiento externo R2 según la política autorizada.
+- Obtener autorización explícita para la ventana productiva.
+
+La candidata permanece `candidate`. No se autoriza merge,
+tag final, promoción D07 ni inicio D08 con estas pruebas.

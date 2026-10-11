@@ -100,7 +100,7 @@ y los servicios productivos tienen límites CPU, RAM y procesos. Operación e in
 
 ## Release D07
 
-El manifiesto `0.7.0-d07-rc1` fija Backend F10, NLP F10 y FE09. El estado `released` exige digests
+El manifiesto `0.7.0-d07-rc2` fija Backend F10, NLP F10 y FE09. El estado `released` exige digests
 OCI; los tags derivados de SHA sólo identifican la candidata. El cierre, los gates y los bloqueos
 operacionales están en `docs/implementacion/D07_RELEASE.md`. La copia externa cifrada se ejecuta con
 `scripts/backup_and_offsite.sh`.

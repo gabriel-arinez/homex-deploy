@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-BACKEND="bc375894036d30cefbc8cdf7c512315aaf1ab971"
+BACKEND="3e05362ac49c170963a8dc1d32b4d612e491112f"
 FRONTEND="479a092462b36a90006eb1c52f9570ea63084bab"
 NLP="79efeaf6a8ca738eb3abce414850f973b1962fd8"
 
@@ -15,7 +15,7 @@ def need(path: str, *parts: str) -> str:
     return text
 
 def main() -> None:
-    manifest=need("releases/manifest.yaml",'version: "0.7.0-d07-rc1"','status: candidate',BACKEND,FRONTEND,NLP,'api: homex/backend:d07-bc37589','frontend_proxy: homex/frontend-proxy:d07-479a092')
+    manifest=need("releases/manifest.yaml",'version: "0.7.0-d07-rc2"','status: candidate',BACKEND,FRONTEND,NLP,'api: homex/backend:d07-3e05362','frontend_proxy: homex/frontend-proxy:d07-479a092')
     if "latest" in manifest: raise SystemExit("El manifiesto D07 usa latest")
     schema=json.loads((ROOT/"releases/manifest.schema.json").read_text())
     released=json.dumps(schema)

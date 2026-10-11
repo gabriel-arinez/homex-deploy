@@ -48,12 +48,12 @@ en los dispositivos autorizados.
 
 | Componente | Revisión/versión |
 | --- | --- |
-| backend | `bc375894036d30cefbc8cdf7c512315aaf1ab971` |
+| backend | `3e05362ac49c170963a8dc1d32b4d612e491112f` |
 | frontend | `479a092462b36a90006eb1c52f9570ea63084bab` |
 | NLP source | `79efeaf6a8ca738eb3abce414850f973b1962fd8` |
 | NLP runtime | `0.1.0` |
 | ASR | `Systran/faster-whisper-small@536b0662742c02347bc0e980a01041f333bce120` |
-| release | `0.7.0-d07-rc1` (`candidate`) |
+| release | `0.7.0-d07-rc2` (`candidate`) |
 
 D07 conserva la topología privada probada en D04 y fija los cierres F10/FE09. La promoción a
 `released` exige imágenes publicadas por digest y validación en el servidor objetivo.

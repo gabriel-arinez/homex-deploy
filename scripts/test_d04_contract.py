@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKEND_SHA = "bc375894036d30cefbc8cdf7c512315aaf1ab971"
+BACKEND_SHA = "3e05362ac49c170963a8dc1d32b4d612e491112f"
 FRONTEND_SHA = "479a092462b36a90006eb1c52f9570ea63084bab"
 NLP_SHA = "79efeaf6a8ca738eb3abce414850f973b1962fd8"
 PRIVATE_HOSTNAME = "homex.internal"
@@ -144,8 +144,8 @@ def main() -> None:
         require(manifest, fragment, "releases/manifest.yaml")
 
     for image in (
-        "api: homex/backend:d07-bc37589",
-        "worker: homex/backend:d07-bc37589",
+        "api: homex/backend:d07-3e05362",
+        "worker: homex/backend:d07-3e05362",
         "frontend_proxy: homex/frontend-proxy:d07-479a092",
     ):
         require(manifest, image, "releases/manifest.yaml")

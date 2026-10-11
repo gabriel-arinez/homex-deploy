@@ -269,6 +269,20 @@ Tanto D04 (`homex-d07-beat-d04-controlado-ok`) como D07
 `beat` no se inició y producción permaneció sin cambios.
 **No se comprobó publicación ni ejecución efectiva de tareas periódicas.**
 
+En el namespace `homex-d07-upgrade` se validó la integración
+**Beat → Redis → worker** con programación temporal limitada a
+`capturas.limpiar_audio_temporal` cada 3 segundos, directorio de audio
+vacío y cola inicialmente vacía. En D04 Beat + worker D04 se publicaron,
+recibieron y completaron tres tareas (resultado 0; cola final vacía):
+`homex-d07-beat-redis-worker-d04-ok`. El primer intento registró una
+advertencia del archivo scheduler por abrir dos instancias, aunque
+las tres tareas finalizaron. Se corrigió usando un scheduler único.
+En la siguiente prueba, **Beat D07 → worker D04**, las tres tareas
+se recibieron y finalizaron correctamente, sin advertencia de archivo
+de scheduler (`homex-d07-beat-d07-redis-worker-d04-ok`).
+Beat permanente permaneció detenido y producción intacta. Estas
+pruebas **no** validan outbox, reconciliación ni transcripción ASR.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

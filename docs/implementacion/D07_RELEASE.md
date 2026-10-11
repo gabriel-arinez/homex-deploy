@@ -293,6 +293,14 @@ producción siguieron intactos. Queda pendiente el retorno del worker
 a D04 y revalidar la integración; las tareas reales de outbox y ASR
 continúan fuera de este ensayo.
 
+Tras la integración Beat D07 + worker D07, se realizó nuevamente el
+rollback **worker D07 → D04** en el namespace aislado: imagen D04,
+estado `healthy`, Redis conectado, cuatro tareas registradas y colas
+`celery`/`unacked` vacías. PostgreSQL, Redis, API y frontend conservaron
+sus IDs; HTTPS `/api/v1/health/` respondió 200 y producción permaneció
+intacta (`homex-d07-worker-rollback-post-integracion-ok`). Queda pendiente
+la comprobación funcional Beat D04 → worker D04 después del retorno.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

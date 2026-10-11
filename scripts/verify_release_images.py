@@ -56,6 +56,8 @@ def verify_compose(refs: dict[str, str]) -> None:
     if len(sys.argv) == 1:
         env_file = os.environ.get('HOMEX_ENV_FILE', '.env.production')
         if not Path(env_file).exists():
+            if os.environ.get('HOMEX_REQUIRE_COMPOSE_MATCH') == '1':
+                raise SystemExit(f'Falta archivo de entorno para validar Compose: {env_file}')
             return
         compose_files = os.environ.get('HOMEX_COMPOSE_FILES', '-f docker-compose.yml -f compose.production.yml').split()
         command = ['docker', 'compose', *compose_files, '--env-file', env_file, 'config', '--format', 'json']

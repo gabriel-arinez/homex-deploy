@@ -77,7 +77,7 @@ La copia externa **operacional** se realiza mediante `scripts/backup_restic.sh` 
 sobre Restic/S3 en R2, sin montar el bucket. El operador ya inicializó el repositorio
 cifrado `b1911bc781` en el bucket `homex-backups-prod` y confirmó subida,
 restauración y SHA-256 de un archivo sintético (snapshot `1b2dbe40`).
-Esto no demuestra todavía la recuperación completa de PostgreSQL y media reales.
+La recuperación de PostgreSQL y media reales fue demostrada posteriormente, según el acta operacional.
 
 `scripts/backup_and_offsite.sh` carga la configuración privada desde
 `~/.config/homex/restic-r2.env`, verifica acceso remoto antes de crear una unidad D05,
@@ -92,17 +92,59 @@ servicio Restic**. No se debe configurar ni utilizar la ruta de montaje GPG
 como respaldo productivo paralelo. Planificar su retiro con una fase controlada
 para no romper evidencias de CI previas.
 
-La unidad versionada `systemd/homex-backup.service` se ha adaptado a las rutas
-reales del host de pruebas y se mantiene **sin instalar**. La unidad instalada
-continúa ejecutando únicamente `backup.sh`. Antes de instalar, verificar
-permisos, sandbox systemd, acceso al socket Docker, prueba de restauración
-real aislada y comportamiento ante R2 inaccesible. Sin merge, sin activar timer
-nuevo y sin modificar `homex-prod`.
+La unidad versionada `systemd/homex-backup.service` quedó instalada en el host el
+11-10-2026 y el timer diario está activo. Ver acta operacional siguiente; no
+confundir instalación del servicio de backup con promoción de las imágenes D07.
 
 Los secretos S3 y contraseña de recuperación no se versionan. La retención
 remota aún no se automatiza; no usar `restic forget --prune` hasta validar
 la política y la restauración completa. La verificación de snapshots no
 equivale por sí sola a `restic check --read-data` ni a recuperación probada.
+
+## Acta operacional D05/R2 — 11 de octubre de 2026 (host objetivo)
+
+Esta acta registra únicamente hechos observados y comprobados en el equipo HOMEX.
+No equivale a promoción de la release D07: el runtime observado seguía usando imágenes
+D04 (backend `homex/backend:d04-9ce7230`, frontend
+`homex/frontend-proxy:d04-deba1de`).
+
+| Gate real | Evidencia y resultado |
+| --- | --- |
+| R2 | Bucket `homex-backups-prod`; repositorio Restic cifrado `b1911bc781`; secretos privados fuera de Git, ficheros modo `0600` |
+| Unidad D05 externa | `homex-20261009T051913Z` recuperada desde R2; seis archivos comparados con originales; cinco SHA-256 válidos; media tar legible |
+| Recuperación PostgreSQL | Dump CUSTOM v1.16 (PostgreSQL 17.6) restaurado en contenedor efímero aislado (`--network none`), sin modificar producción |
+| Objetos recuperados | 34 tablas, 52 funciones, 48 triggers y 52 migraciones; 5 clientes, 0 productos y 0 pedidos en la unidad usada |
+| Media recuperada | Extracción segura y `media_inventory.py verify`: `media-checksums-ok` |
+| CI de D07 | Commit `814d154`; push `38110687107` y PR `38110689479`, ambos `success` |
+| Preflight systemd | RESTIC/R2, Docker 29.1.3, directorios, variables y restricciones de sandbox: éxito |
+| Primer backup supervisado | `homex-20261011T041518Z`, snapshot Restic `395aaedb2a93`, salida `homex-backup-and-offsite-ok`, unidad `Result=success` |
+| Backup automático sin intervención | Disparo excepcional 00:25 (-04) mediante `homex-d07-prueba-0025.timer`; unidad `homex-20261011T042511Z`, snapshot `f2a5e6e0843d` y `Result=success` |
+| Verificación remota | `restic snapshots --tag homex-20261011T042511Z` y `restic ls f2a5e6e0843d` correctos |
+| Estado posterior | API, worker, PostgreSQL, Redis, frontend-proxy y monitor activos/healthy donde existe healthcheck; timer diario habilitado y activo a las 03:00 (-04) |
+| Rollback de systemd | Unidad previa resguardada fuera del repositorio en `~/Descargas/homex-backup-service-previo-d07-20261011-000522.service` |
+
+Servicio actualmente instalado: `systemd/homex-backup.service` (Restic R2);
+el `homex-backup.timer` del host está habilitado. Los backups cifrados
+se crean sin cambiar el almacenamiento comercial `filesystem`; R2 se usa
+**sólo como destino de backups**, no como backend activo de imágenes.
+
+### Pendientes antes de promover D07
+
+- [x] Offsite cifrado real, recuperación PostgreSQL y media en destino aislado.
+- [x] Primera ejecución productiva supervisada y otra disparada por systemd sin intervención.
+- [x] CI push/PR del commit de referencia en verde.
+- [ ] Publicar imágenes D07 en registry y fijar `RepoDigest` de API/worker/proxy en manifiesto y Compose.
+- [ ] Ejecutar build/migración/smoke de **release D07** en el host objetivo con ventana y rollback documentados; las imágenes D04 siguen desplegadas.
+- [ ] Perfilar ASR/modelo en el host objetivo real y conservar el JSON técnico, incluyendo memoria/latencias y verificación de cero audio.
+- [ ] Repetir smoke comercial y voz → NLP → HITL sobre release D07 en host real; validar media y documentos contra PostgreSQL.
+- [ ] Revalidar PC/móvil/tablet autorizados, rechazo de dispositivo no autorizado y HTTPS/Cloudflare en la release D07.
+- [ ] Ensayar rollback integral de la release D07 en namespace aislado; comprobar compatibilidad del manifiesto y las migraciones.
+- [ ] Acordar política de retención **remota** y comprobar recuperación periódica; `restic forget --prune` aún no autorizado ni automatizado.
+- [ ] Verificar comportamiento ante caída R2, alarma de fallo del timer y recuperación tras fallo del host; no se afirma cobertura completa de estas situaciones.
+
+**Criterio de cierre:** no convertir `candidate` en `released`, ni crear tag final,
+ni iniciar D08 hasta completar los gates restantes y revisar la evidencia física.
+El PR #8 continúa abierto sin merge.
 
 ## Seguridad y operación
 
@@ -167,8 +209,9 @@ No ejecutar contra `homex-prod` sin ventana y autorización operacional:
 ## Condición de cierre
 
 La implementación D07 queda lista para PR y puede demostrar la release en CI aislado. La
-**validación productiva no está ejecutada en esta rama**: faltan digests de registry, copia en un
-destino externo real, perfil del hardware definitivo y la ventana autorizada para despliegue,
+**promoción productiva de la release D07 no está ejecutada**: ya existe copia externa
+real y backup programado, pero faltan digests de registry, perfil del hardware definitivo
+y la ventana autorizada para desplegar la release D07,
 acceso de dispositivos y smoke del host. Mientras falte cualquiera, el manifiesto permanece
 `candidate`; Backend F10, NLP F10 y FE09 reciben evidencia técnica pero conservan su condición
 productiva. No se adelanta D08 ni el piloto.

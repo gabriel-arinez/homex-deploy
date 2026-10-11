@@ -9,9 +9,9 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKEND_SHA = "9ce723048d98a3925be45d9c359a25e6be7b19f3"
-FRONTEND_SHA = "deba1de244395dbdcb266f03026630b403768d71"
-NLP_SHA = "8d1750b2d1d26f6d90da10603216b7926bdaf820"
+BACKEND_SHA = "3e05362ac49c170963a8dc1d32b4d612e491112f"
+FRONTEND_SHA = "479a092462b36a90006eb1c52f9570ea63084bab"
+NLP_SHA = "79efeaf6a8ca738eb3abce414850f973b1962fd8"
 PRIVATE_HOSTNAME = "homex.internal"
 PRIVATE_ORIGIN = "https://homex.internal"
 
@@ -144,9 +144,9 @@ def main() -> None:
         require(manifest, fragment, "releases/manifest.yaml")
 
     for image in (
-        "api: homex/backend:d04-9ce7230",
-        "worker: homex/backend:d04-9ce7230",
-        "frontend_proxy: homex/frontend-proxy:d04-deba1de",
+        "api: ghcr.io/gabriel-arinez/homex-backend:0.7.0-d07-rc2@sha256:0a9f7f0e7650304808fe8d99227648ef42b34507c11d3ed86adbd8176391166a",
+        "worker: ghcr.io/gabriel-arinez/homex-backend:0.7.0-d07-rc2@sha256:0a9f7f0e7650304808fe8d99227648ef42b34507c11d3ed86adbd8176391166a",
+        "frontend_proxy: ghcr.io/gabriel-arinez/homex-frontend-proxy:0.7.0-d07-rc2@sha256:023cad7b1d64520e5e3d2d407d27ed6224c88ae1c2f4bcbd0b74c24b0bebe15c",
     ):
         require(manifest, image, "releases/manifest.yaml")
 

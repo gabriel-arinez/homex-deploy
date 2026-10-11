@@ -220,6 +220,46 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "release": {
+            "properties": {
+              "status": {
+                "const": "released"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "release"
+        ]
+      },
+      "then": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "images": {
+                "properties": {
+                  "api": {
+                    "$ref": "#/$defs/digested_image"
+                  },
+                  "worker": {
+                    "$ref": "#/$defs/digested_image"
+                  },
+                  "frontend_proxy": {
+                    "$ref": "#/$defs/digested_image"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -263,6 +303,10 @@
           "$ref": "#/$defs/sha"
         }
       }
+    },
+    "digested_image": {
+      "type": "string",
+      "pattern": "^.+:[^:@\\s]+@sha256:[0-9a-f]{64}$"
     }
   }
 }

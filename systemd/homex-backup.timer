@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily HOMEX encrypted off-site backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/La_Paz
+Persistent=true
+RandomizedDelaySec=10m
+Unit=homex-backup.service
+
+[Install]
+WantedBy=timers.target

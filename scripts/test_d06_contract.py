@@ -13,7 +13,7 @@ def forbid(text,fragment,source):
 
 def main():
     overlay=(ROOT/'compose.production.yml').read_text(); nginx=(ROOT/'nginx/production.conf').read_text(); env=(ROOT/'.env.production.example').read_text(); runbook=(ROOT/'docs/OPERATIONS_RUNBOOK.md').read_text(); workflow=(ROOT/'.github/workflows/ci.yml').read_text()
-    for fragment in ('max-size: ${HOMEX_LOG_MAX_SIZE:-10m}','max-file: ${HOMEX_LOG_MAX_FILES:-5}','pids_limit:','  monitor:','HOMEX_STORAGE_WARN_PERCENT','collect_runtime_metrics.py','--access-logformat=','request_id'):
+    for fragment in ('max-size: ${HOMEX_LOG_MAX_SIZE:-10m}','max-file: ${HOMEX_LOG_MAX_FILES:-5}','pids_limit:','  monitor:','HOMEX_STORAGE_WARN_PERCENT','collect_runtime_metrics.py','HOMEX_AUDIO_TEMP_ROOT: /var/lib/homex/audio-temporal','--access-logformat=','request_id'):
         need(overlay,fragment,'compose.production.yml')
     for fragment in ('log_format homex_json escape=json','"request_id":"$request_id"','proxy_set_header X-Request-ID $request_id','add_header X-Request-ID $request_id','access_log /dev/stdout homex_json','error_log /dev/stderr warn'):
         need(nginx,fragment,'nginx/production.conf')

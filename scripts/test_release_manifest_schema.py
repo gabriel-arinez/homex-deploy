@@ -100,8 +100,17 @@ def main() -> None:
             "frontend_proxy": DIGESTED_IMAGE,
         }
     )
+    released_tagged = deepcopy(tagged)
+    released_tagged["release"]["status"] = "released"
+    if not errors(validator, released_tagged):
+        raise SystemExit("released aceptó imágenes sin digest OCI")
+
     if digested_errors := errors(validator, digested):
         raise SystemExit(f"candidate con digest de registry fue rechazada: {digested_errors}")
+    released_digested = deepcopy(digested)
+    released_digested["release"]["status"] = "released"
+    if released_errors := errors(validator, released_digested):
+        raise SystemExit(f"released con digest fue rechazada: {released_errors}")
 
     for mutable in (
         "homex/service:latest",

@@ -216,10 +216,25 @@ de relaciones, importes, estados, movimientos y 52 migraciones exitosas
 mismos datos mediante imagen D04: `manage.py check` sin errores,
 `migrate --check` correcto, `homex-d07-rollback-d04-lectura-ok`.
 
-**Alcance limitado:** compatibilidad de datos y de lectura sobre un fixture
-comercial aislado; no es aún rollback operativo de API/worker/frontend ni
-restauración desde backup previo al cambio. No se modificó `homex-prod`.
-El namespace de ensayo queda pendiente de limpieza al concluir los gates.
+Se completó adicionalmente el **rollback operativo de la API** sobre el mismo
+namespace con `docker compose up -d --no-deps --force-recreate api`:
+la API D04 arrancó `healthy` con respuesta 200 en `/api/v1/health/`
+(`homex-d07-api-d04-healthy-ok`), fue reemplazada exclusivamente por
+API D07 `healthy`, también con 200 en health, conservando IDs de
+PostgreSQL/Redis y datos comerciales (`homex-d07-api-d07-healthy-ok`).
+Finalmente se recreó exclusivamente la API D04: `healthy`, HTTP 200,
+mismos IDs de PostgreSQL/Redis, datos/stock/importes intactos, `manage.py check`
+y `migrate --check` correctos (`homex-d07-rollback-api-d04-completo-ok`).
+Las comprobaciones de montaje permitieron solo media temporal aislada,
+volúmenes con prefijo de proyecto y los dos archivos de configuración del
+repositorio montados en modo lectura. Ninguna API del ensayo publicó puertos.
+
+**Alcance limitado:** la transición D04 → D07 → D04 valida lectura
+comercial y retorno operativo **de la API**, no rollback integral de
+worker/beat/frontend, ni restauración desde una unidad anterior a la
+actualización, ni ensayos de fallo a mitad de migración. No se modificó
+`homex-prod`. El namespace de ensayo queda pendiente de limpieza al
+concluir los gates.
 
 ## Seguridad y operación
 

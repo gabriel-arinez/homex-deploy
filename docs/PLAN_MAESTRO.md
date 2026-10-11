@@ -966,11 +966,11 @@ CI verde para el commit `814d154` (workflows push `38110687107` y PR
   `0.7.0-d07-rc1` sigue en `candidate`, con referencias por tag, no por
   digest de registry. No hay promoción ni evidencia final de dispositivo,
   perfil ASR en release D07, rollback integral ni smoke D07 sobre host.
-- **Bloqueo de seguridad a resolver antes de promoción:** la función
-  `verify_compose` de `scripts/verify_release_images.py` retorna sin comparar
-  Compose si falta el env esperado. Se debe fortalecer el fail-closed sin
-  romper los gates aislados, y verificar que el comando de promoción usa el
-  mismo `COMPOSE_PROJECT_NAME` y archivo de entorno del despliegue.
+- **Control de seguridad implementado en D07 (pendiente de CI):**
+  `scripts/deploy.sh` exige ahora `HOMEX_REQUIRE_COMPOSE_MATCH=1` y pasa el
+  entorno/Compose real al validador, que falla si falta el `.env` solicitado.
+  Queda verificar en un despliegue D07 real la coincidencia con imágenes,
+  manifiesto y proyecto productivo.
 - **Operación pendiente:** definir retención remota y gestión de alertas
   por fallo del backup; todavía no se ha activado `restic forget --prune`.
 

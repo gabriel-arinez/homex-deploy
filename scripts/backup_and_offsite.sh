@@ -1,8 +1,20 @@
 #!/bin/sh
 set -eu
+
+# En el host se carga la configuración privada (nunca desde Git).
+if [ -z "${RESTIC_REPOSITORY:-}" ]; then
+  config=${HOMEX_RESTIC_CONFIG:-"${HOME:?}/.config/homex/restic-r2.env"}
+  [ -r "$config" ] || { echo "Configuración privada Restic inaccesible" >&2; exit 1; }
+  . "$config"
+fi
+export RESTIC_PASSWORD_FILE=${RESTIC_PASSWORD_FILE:-"${HOME:?}/.config/homex/restic-password"}
+: "${RESTIC_REPOSITORY:?RESTIC_REPOSITORY obligatorio}"
+
+# No detener servicios ni generar backup si no hay credenciales válidas.
+restic snapshots --json >/dev/null
 output=$(scripts/backup.sh)
 printf '%s\n' "$output"
 backup_dir=$(printf '%s\n' "$output" | sed -n '1p')
 [ -d "$backup_dir" ] || { echo "backup.sh no devolvió una unidad válida" >&2; exit 1; }
-scripts/backup_offsite.sh "$backup_dir"
+scripts/backup_restic.sh "$backup_dir"
 echo homex-backup-and-offsite-ok

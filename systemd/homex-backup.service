@@ -19,6 +19,7 @@ Environment=HOMEX_BACKUP_ROOT=/srv/homex/backups
 Environment=HOMEX_BACKUP_RETENTION_DAYS=14
 Environment=HOMEX_RESTIC_CONFIG=/home/gabriel/.config/homex/restic-r2.env
 Environment=RESTIC_PASSWORD_FILE=/home/gabriel/.config/homex/restic-password
+Environment=RESTIC_CACHE_DIR=/srv/homex/backups/.restic-cache
 UMask=0077
 ExecStart=/bin/sh /home/gabriel/HOMEX/homex-deploy/scripts/backup_and_offsite.sh
 TimeoutStartSec=60min
@@ -26,6 +27,6 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/srv/homex/backups /home/gabriel/.cache/restic
+ReadWritePaths=/srv/homex/backups
 StandardOutput=journal
 StandardError=journal

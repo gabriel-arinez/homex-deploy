@@ -349,6 +349,19 @@ registros PostgreSQL y `celery`/`unacked` permanecieron vacías
 la misma prueba; no hubo consumo por el worker ni ejecución de ASR.
 Pendiente ensayar fallo de envío al broker y recuperación de Outbox.
 
+En D07 se ensayó fallo y recuperación de publicación Outbox usando
+un puerto Redis inaccesible sin detener el broker aislado real:
+`publicar_pendientes` registró un `ConnectionError`, conservó el
+trabajo pendiente y su clave única; el reintento publicó en una
+cola sintética exclusiva del Redis aislado y preservó el mismo ID.
+Se retiró el mensaje, se revirtieron los registros sintéticos y
+`celery`/`unacked` permanecieron vacías
+(`homex-d07-outbox-fallo-recuperacion-ok`,
+`homex-d07-outbox-recuperacion-validada-ok`). Producción no cambió.
+**No** representa una caída del servicio Redis ni ejercicio de ASR.
+Queda pendiente la paridad D04 para este escenario y la
+reconciliación integrada de eventos.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

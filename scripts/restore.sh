@@ -75,7 +75,7 @@ attempt=0
 # Esperar una consulta SQL real; pg_isready por sí solo puede adelantarse al arranque completo.
 # shellcheck disable=SC2016
 until run_compose exec -T postgres sh -eu -c \
-  'psql --username "$POSTGRES_USER" --dbname postgres --tuples-only --command "SELECT 1"' \
+  'test "$(cat /proc/1/comm)" = postgres; psql --username "$POSTGRES_USER" --dbname postgres --tuples-only --command "SELECT 1"' \
   >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   [ "$attempt" -lt 60 ] || { echo "PostgreSQL no quedó disponible" >&2; exit 1; }

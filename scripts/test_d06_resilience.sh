@@ -92,7 +92,7 @@ if run_compose exec -T api python -c "from pathlib import Path; Path('/var/lib/h
 chmod 0777 "$media"
 run_compose exec -T api python -c "from pathlib import Path; p=Path('/var/lib/homex/media/d06-write-probe'); p.write_text('x'); p.unlink()"
 echo d06-media-readonly-recovery-ok
-docker run --rm --tmpfs /full:rw,size=64k "homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d04-9ce7230}" python -c "import errno,pathlib; p=pathlib.Path('/full/fill'); caught=False
+docker run --rm --tmpfs /full:rw,size=64k "homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-bc37589}" python -c "import errno,pathlib; p=pathlib.Path('/full/fill'); caught=False
 try:
  p.write_bytes(b'x'*1048576)
 except OSError as e:

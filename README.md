@@ -5,13 +5,9 @@ comerciales, lógica NLP ni componentes Vue de dominio.
 
 ## Estado
 
-- D00 — baseline y contrato: cerrada.
-- D01 — runtime integrado backend + NLP: cerrada y verificada con CI remoto verde.
-- D02 — staging integrado y reverse proxy: cerrada y fusionada.
-- D03 — media persistente local: cerrada y validada.
-- D04 — release candidate integrada + HTTPS/acceso privado: en curso; automatización implementada, validación real de Cloudflare/dispositivos pendiente.
-- D05 — recuperación implementada en `feat/d05-backup-restore`; cierre secuencial condicionado al cierre formal de D04.
-- D06+ — resiliencia, release y piloto pendientes.
+- D00–D06 — cerradas y fusionadas.
+- D07 — implementación de release productiva en `feat/d07-release-productiva`; promoción física pendiente.
+- D08 — piloto pendiente.
 
 ## Recuperación D05
 
@@ -101,3 +97,10 @@ El perfil `observability` añade métricas de dependencias, outbox y almacenamie
 puerto nuevo. Los logs de proxy/API se correlacionan mediante `X-Request-ID`, los logs Docker rotan
 y los servicios productivos tienen límites CPU, RAM y procesos. Operación e incidentes:
 `docs/OPERATIONS_RUNBOOK.md`. Gate aislado: `scripts/test_d06_resilience.sh`.
+
+## Release D07
+
+El manifiesto `0.7.0-d07-rc1` fija Backend F10, NLP F10 y FE09. El estado `released` exige digests
+OCI; los tags derivados de SHA sólo identifican la candidata. El cierre, los gates y los bloqueos
+operacionales están en `docs/implementacion/D07_RELEASE.md`. La copia externa cifrada se ejecuta con
+`scripts/backup_and_offsite.sh`.

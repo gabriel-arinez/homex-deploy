@@ -63,32 +63,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: deba1de244395dbdcb266f03026630b403768d71
+          ref: 479a092462b36a90006eb1c52f9570ea63084bab
           path: sources/frontend
-      - name: Build D04 API/worker and frontend/proxy images without cache
+      - name: Build D07 API/worker and frontend/proxy images without cache
         env:
           BACKEND_CONTEXT: ./sources/backend
           FRONTEND_CONTEXT: ./sources/frontend
         run: |
           docker compose -f docker-compose.yml -f compose.production.yml \
             --env-file .env.production.example build --no-cache backend frontend-proxy
-          api_id=$(docker image inspect homex/backend:d04-9ce7230 --format '{{.Id}}')
-          frontend_id=$(docker image inspect homex/frontend-proxy:d04-deba1de --format '{{.Id}}')
-          echo "D04_API_IMAGE_ID=$api_id"
-          echo "D04_FRONTEND_IMAGE_ID=$frontend_id"
+          api_id=$(docker image inspect homex/backend:d07-bc37589 --format '{{.Id}}')
+          frontend_id=$(docker image inspect homex/frontend-proxy:d07-479a092 --format '{{.Id}}')
+          echo "D07_API_IMAGE_ID=$api_id"
+          echo "D07_FRONTEND_IMAGE_ID=$frontend_id"
           expected_api=$(awk '$1 == "api:" {print $2}' releases/manifest.yaml)
           expected_worker=$(awk '$1 == "worker:" {print $2}' releases/manifest.yaml)
           expected_frontend=$(awk '$1 == "frontend_proxy:" {print $2}' releases/manifest.yaml)
-          test "$expected_api" = "homex/backend:d04-9ce7230"
-          test "$expected_worker" = "homex/backend:d04-9ce7230"
-          test "$expected_frontend" = "homex/frontend-proxy:d04-deba1de"
-          test "$(docker image inspect homex/backend:d04-9ce7230 --format '{{index .RepoTags 0}}')" = "homex/backend:d04-9ce7230"
-          test "$(docker image inspect homex/frontend-proxy:d04-deba1de --format '{{index .RepoTags 0}}')" = "homex/frontend-proxy:d04-deba1de"
+          test "$expected_api" = "homex/backend:d07-bc37589"
+          test "$expected_worker" = "homex/backend:d07-bc37589"
+          test "$expected_frontend" = "homex/frontend-proxy:d07-479a092"
+          test "$(docker image inspect homex/backend:d07-bc37589 --format '{{index .RepoTags 0}}')" = "homex/backend:d07-bc37589"
+          test "$(docker image inspect homex/frontend-proxy:d07-479a092 --format '{{index .RepoTags 0}}')" = "homex/frontend-proxy:d07-479a092"
+          HOMEX_RELEASE_IMAGE_EVIDENCE=/tmp/d07-images.json python3 scripts/verify_release_images.py
+          test -s /tmp/d07-images.json
 
   integration:
     runs-on: ubuntu-latest
@@ -97,7 +99,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - name: Prepare read-only ASR mount fixture
         run: |
@@ -120,12 +122,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: deba1de244395dbdcb266f03026630b403768d71
+          ref: 479a092462b36a90006eb1c52f9570ea63084bab
           path: sources/frontend
       - uses: actions/setup-node@v4
         with:
@@ -154,12 +156,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: deba1de244395dbdcb266f03026630b403768d71
+          ref: 479a092462b36a90006eb1c52f9570ea63084bab
           path: sources/frontend
       - name: Run D03 local media production gate
         env:
@@ -178,12 +180,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: deba1de244395dbdcb266f03026630b403768d71
+          ref: 479a092462b36a90006eb1c52f9570ea63084bab
           path: sources/frontend
       - uses: actions/setup-node@v4
         with:
@@ -210,7 +212,16 @@ jobs:
           D04_COMPOSE_PROJECT: homex-d04-ci
           D04_MEDIA_HOST_PATH: /tmp/homex-d04-media
           D04_ASR_MODEL_PATH: ${{ github.workspace }}/.cache/d04-asr
+          D07_EVIDENCE_DIR: /tmp/homex-d07-evidence
         run: sh scripts/test_d04_candidate.sh
+      - name: Upload D07 ASR profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d07-asr-runtime-profile
+          path: /tmp/homex-d07-evidence/asr-runtime.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Collect D04 logs on failure
         if: failure()
         run: |
@@ -235,7 +246,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - run: python3 scripts/test_media_inventory.py
       - run: python3 scripts/test_d05_contract.py
@@ -254,12 +265,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 9ce723048d98a3925be45d9c359a25e6be7b19f3
+          ref: bc375894036d30cefbc8cdf7c512315aaf1ab971
           path: sources/backend
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-frontend
-          ref: deba1de244395dbdcb266f03026630b403768d71
+          ref: 479a092462b36a90006eb1c52f9570ea63084bab
           path: sources/frontend
       - name: Run D06 observability and destructive resilience gate
         env:
@@ -283,6 +294,21 @@ jobs:
           path: /tmp/d06-compose.log
           if-no-files-found: ignore
           retention-days: 7
+
+  d07-release-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install check-jsonschema==0.35.0 jsonschema==4.25.1
+      - run: check-jsonschema --schemafile releases/manifest.schema.json releases/manifest.yaml
+      - run: python3 scripts/test_release_manifest_schema.py
+      - run: python3 scripts/test_d07_contract.py
+      - run: sh scripts/test_d07_offsite.sh
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - run: sh scripts/test_d07_restic.sh
 
   secrets:
     runs-on: ubuntu-latest

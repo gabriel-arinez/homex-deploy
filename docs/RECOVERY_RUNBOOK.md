@@ -114,3 +114,92 @@ Al menos una vez por release y periódicamente en operación:
 
 `scripts/test_d05_recovery.sh` automatiza exactamente ese ensayo sobre un namespace Compose
 aislado `homex-d05-*` y nunca acepta credenciales productivas.
+
+## Copia externa cifrada D07 — Restic + Cloudflare R2 (operacional)
+
+**Ruta oficial del host HOMEX a partir del 11-10-2026:** backup D05 local,
+validación SHA-256, snapshot cifrado de la **unidad indivisible** en Cloudflare R2.
+No se usa R2 como backend de media comercial; ésta permanece en filesystem local.
+
+Configuración privada fuera de Git, propiedad del usuario operativo, con permisos
+restrictivos:
+
+- `~/.config/homex/restic-r2.env` (`0600`): exporta `RESTIC_REPOSITORY`,
+  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `AWS_DEFAULT_REGION`.
+- `~/.config/homex/restic-password` (`0600`): contraseña del repositorio.
+- `/srv/homex/backups/.restic-cache` (`0700`): caché local.
+- Bucket externo: `homex-backups-prod`; nunca registrar endpoint completo ni secretos en evidencia.
+
+El servicio `homex-backup.service` instalado invoca
+`scripts/backup_and_offsite.sh`; realiza una comprobación remota inicial,
+llama a `scripts/backup.sh`, y sólo publica en R2 una unidad válida mediante
+`scripts/backup_restic.sh`. El timer está habilitado para las 03:00 (-04).
+Un fallo de red/Restic causa fallo del servicio y debe revisarse con
+`systemctl show` y `journalctl`; no confundir copia local con offsite exitoso.
+
+### Verificar el respaldo remoto (sin modificar producción)
+
+```sh
+cd ~/HOMEX/homex-deploy
+(
+  set -eu
+  . "$HOME/.config/homex/restic-r2.env"
+  export RESTIC_PASSWORD_FILE="$HOME/.config/homex/restic-password"
+  restic snapshots --tag homex-d07-offsite
+  restic check
+)
+systemctl list-timers homex-backup.timer --no-pager
+systemctl show homex-backup.service -p Result -p ExecMainStatus
+```
+
+### Recuperar una unidad en un directorio aislado
+
+```sh
+cd ~/HOMEX/homex-deploy
+(
+  set -eu
+  . "$HOME/.config/homex/restic-r2.env"
+  export RESTIC_PASSWORD_FILE="$HOME/.config/homex/restic-password"
+  DESTINO=$(mktemp -d "$HOME/Descargas/homex-r2-recuperacion-XXXXXXXX")
+  restic restore f2a5e6e0843d --target "$DESTINO"
+  echo "Directorio de recuperación: $DESTINO"
+)
+```
+
+El resultado recupera el árbol de rutas original bajo el directorio destino
+(`srv/homex/backups/homex-...`). **Nunca** restaurar directamente sobre los
+volúmenes productivos. Localizar la unidad extraída, ejecutar
+`(cd UNIDAD && sha256sum -c SHA256SUMS)`, verificar el manifiesto de media con
+`python3 scripts/media_inventory.py extract` y `verify`, y restaurar el dump
+en PostgreSQL **17.6** aislado. El `pg_restore` 16 del host no puede leer el
+dump CUSTOM 1.16 generado por PostgreSQL 17; usar las herramientas del contenedor
+`postgres:17.6-alpine3.22`. El ensayo aislado del 11-10-2026 recuperó 34
+tablas, 52 funciones, 48 triggers, 52 migraciones y media íntegra. Los cero
+productos/pedidos correspondían a los datos existentes en ese backup de ensayo.
+
+Para un restore operativo integral seguir las precondiciones de este runbook:
+verificar release y compatibilidad de migraciones, usar namespace aislado y
+hacer smoke y auditoría DB ↔ media antes de modificar la instalación productiva.
+
+### Conservación, permisos y recuperación ante desastres
+
+La retención **local** es de 14 días. La política de retención **en R2**
+todavía no está aprobada ni automatizada: no ejecutar
+`restic forget --prune` sin pruebas de restauración y definición de política.
+Se requiere custodia separada y documentada de la contraseña y credenciales
+para sobrevivir a pérdida total del host; no introducirlas en Git ni en el backup.
+La prueba puntual de recuperación no sustituye ejercicios periódicos.
+
+El 11-10-2026 se verificaron los snapshots cifrados
+`395aaedb2a93` (ejecución manual) y `f2a5e6e0843d`
+(disparo automático a las 00:25). La ejecución automática produjo
+`homex-20261011T042511Z`, `homex-backup-and-offsite-ok` y servicios
+productivos saludables después de reanudarse.
+
+### Mecanismo histórico GPG (no usado en producción)
+
+`scripts/backup_offsite.sh` y `scripts/test_d07_offsite.sh` permanecen
+únicamente por compatibilidad con pruebas históricas de CI. No se debe
+configurar el método GPG/mount junto a Restic ni asumir que es el flujo activo
+del timer. Su retirada exigirá actualización independiente de contratos.
+

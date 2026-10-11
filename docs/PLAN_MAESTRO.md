@@ -865,7 +865,8 @@ D07 aporta evidencia para backend F10, NLP F10 y FE09 Release.
 
 ## Cierre
 
-`docs/implementacion/D07_RELEASE.md`.
+`docs/implementacion/D07_RELEASE.md`. La implementación automatizada vive en la candidata
+`0.7.0-d07-rc1`; la promoción productiva exige digests y evidencia física del host.
 
 ---
 
@@ -948,6 +949,35 @@ D08 piloto/cierre
         +--> NLP F11
         +--> FE09 final
 ~~~
+
+---
+
+## 16.1. Actualización de seguimiento D07 — 11 de octubre de 2026
+
+El estado histórico de D00–D06 en este plan se mantiene. En D07 se verificó
+CI verde para el commit `814d154` (workflows push `38110687107` y PR
+`38110689479`), y se activó el respaldo cifrado externo por Restic/R2.
+
+- **D05/R2: validación operacional completada.** Recuperación PostgreSQL 17.6
+  y media aisladas; respaldo manual y prueba automática a las 00:25; snapshots
+  `395aaedb2a93` y `f2a5e6e0843d` comprobados desde R2; timer diario 03:00
+  habilitado y activo.
+- **D07: EN CURSO.** El host continúa ejecutando imágenes D04; el manifiesto
+  `0.7.0-d07-rc1` sigue en `candidate`, con referencias por tag, no por
+  digest de registry. No hay promoción ni evidencia final de dispositivo,
+  perfil ASR en release D07, rollback integral ni smoke D07 sobre host.
+- **Control de seguridad implementado en D07 (pendiente de CI):**
+  `scripts/deploy.sh` exige ahora `HOMEX_REQUIRE_COMPOSE_MATCH=1` y pasa el
+  entorno/Compose real al validador, que falla si falta el `.env` solicitado.
+  Queda verificar en un despliegue D07 real la coincidencia con imágenes,
+  manifiesto y proyecto productivo.
+- **Operación pendiente:** definir retención remota y gestión de alertas
+  por fallo del backup; todavía no se ha activado `restic forget --prune`.
+
+La evidencia detallada y la lista explícita de gates están en
+`docs/implementacion/D07_RELEASE.md` y el procedimiento de recuperación
+vigente en `docs/RECOVERY_RUNBOOK.md`. No comenzar D08 ni fusionar el PR #8
+por el solo éxito de la copia externa.
 
 ---
 

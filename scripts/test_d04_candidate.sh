@@ -15,6 +15,8 @@ ca_cert="$tls_dir/homex-root-ca.crt"
 server_cert="$tls_dir/homex.internal.crt"
 server_key="$tls_dir/homex.internal.key"
 audio_fixture=${D04_AUDIO_FIXTURE:-/tmp/homex-d04-cotizacion.wav}
+evidence_dir=${D07_EVIDENCE_DIR:-/tmp/homex-d07-evidence}
+profile_audio=$evidence_dir/profile.wav
 playwright_config="$frontend_context/playwright.d04.config.ts"
 
 case "$project" in
@@ -25,8 +27,8 @@ case "$project" in
     ;;
 esac
 
-if ! getent hosts homex.internal | grep -Eq '(^|[[:space:]])127\.0\.0\.1([[:space:]]|$)'; then
-  echo "El gate D04 aislado requiere homex.internal -> 127.0.0.1" >&2
+if [ "${D04_RESOLVE_LOOPBACK:-0}" != "1" ] && ! getent hosts homex.internal | awk -v expected="$HOMEX_PRIVATE_BIND" '$1 == expected {found=1} END {exit !found}'; then
+  echo "El gate aislado requiere homex.internal -> $HOMEX_PRIVATE_BIND" >&2
   exit 2
 fi
 
@@ -35,8 +37,8 @@ if ! command -v espeak-ng >/dev/null 2>&1; then
   exit 2
 fi
 
-mkdir -p "$media_dir" "$model_dir"
-chmod 0777 "$media_dir" "$model_dir"
+mkdir -p "$media_dir" "$model_dir" "$evidence_dir"
+chmod 0777 "$media_dir" "$model_dir" "$evidence_dir"
 
 HOMEX_PRIVATE_HOSTNAME=homex.internal HOMEX_TLS_DIR="$tls_dir" \
   HOMEX_NGINX_GID=101 HOMEX_TLS_FORCE=1 \
@@ -59,7 +61,7 @@ run_compose() {
 wait_url() {
   url=$1
   attempts=0
-  until curl --fail --silent --show-error --cacert "$ca_cert" "$url" >/dev/null 2>&1; do
+  until curl --fail --silent --show-error --cacert "$ca_cert" --resolve "homex.internal:443:$HOMEX_PRIVATE_BIND" "$url" >/dev/null 2>&1; do
     attempts=$((attempts + 1))
     if [ "$attempts" -ge 90 ]; then
       echo "No quedó disponible: $url" >&2
@@ -73,7 +75,7 @@ cleanup() {
   status=$?
   trap - EXIT INT TERM
   run_compose down --volumes --remove-orphans || true
-  rm -f "$playwright_config" "$audio_fixture"
+  rm -f "$playwright_config" "$audio_fixture" "$profile_audio"
   exit "$status"
 }
 trap cleanup EXIT INT TERM
@@ -112,7 +114,7 @@ cp scripts/playwright.d04.config.ts "$playwright_config"
 const { chromium } = require('playwright')
 
 ;(async () => {
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch({ headless: true, args: process.env.D04_RESOLVE_LOOPBACK === '1' ? ['--host-resolver-rules=MAP homex.internal 127.0.0.1'] : [] })
   const context = await browser.newContext({ ignoreHTTPSErrors: true })
   const page = await context.newPage()
   await page.goto(process.env.D04_BASE_URL + '/login', { waitUntil: 'networkidle' })
@@ -141,6 +143,24 @@ NODE
 )
 
 run_compose exec -T api python scripts/verificar_integracion_frontend_f09.py
+
+# Perfil real y agregado del mismo modelo local, dentro de la red interna sin descarga posible.
+espeak-ng -v es-la -s 115 -g 10 -w "$profile_audio" "tres mesas, total cien bolivianos"
+run_compose run --rm --no-deps \
+  -v "$evidence_dir:/evidence" \
+  worker python /opt/homex-deploy/profile_asr_runtime.py \
+    /evidence/profile.wav --output /evidence/asr-runtime.json
+test ! -e "$profile_audio"
+python3 - "$evidence_dir/asr-runtime.json" <<'PYPROFILE'
+import json,sys
+data=json.load(open(sys.argv[1],encoding="utf-8"))
+assert data["worker_concurrency"] == 1
+assert data["audio_files_remaining"] == 0
+assert data["rss_peak_mib"] >= data["rss_before_mib"] > 0
+assert data["first_transcription_seconds"] > 0
+assert "transcription" not in data and "text" not in data and "audio_path" not in data
+print("d07-asr-runtime-evidence-ok")
+PYPROFILE
 
 # Este verificador usa DRF APIClient en el mismo proceso, no el listener HTTPS real.
 # El transporte HTTPS ya quedó cubierto por Playwright; desactivar sólo el redirect

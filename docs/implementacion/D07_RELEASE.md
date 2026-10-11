@@ -301,6 +301,18 @@ sus IDs; HTTPS `/api/v1/health/` respondió 200 y producción permaneció
 intacta (`homex-d07-worker-rollback-post-integracion-ok`). Queda pendiente
 la comprobación funcional Beat D04 → worker D04 después del retorno.
 
+Se completó la prueba funcional **posterior al rollback** con Beat D04,
+Redis aislado y worker D04. Beat publicó tres tareas temporales de
+`capturas.limpiar_audio_temporal` a intervalos de tres segundos;
+el worker D04 recibió y ejecutó satisfactoriamente las tres
+(resultado 0), las colas quedaron vacías, el worker permaneció
+`healthy`, HTTPS `/api/v1/health/` respondió 200 y el servicio Beat
+permanente siguió detenido. Los siete contenedores productivos no
+se alteraron: `homex-d07-rollback-celery-funcional-completo-ok`.
+**Cierre satisfactorio únicamente de la batería controlada de
+compatibilidad y rollback de Celery para esta tarea**; ASR real,
+outbox y recuperación integral desde respaldo no están cubiertos.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

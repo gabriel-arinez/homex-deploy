@@ -283,6 +283,16 @@ de scheduler (`homex-d07-beat-d07-redis-worker-d04-ok`).
 Beat permanente permaneció detenido y producción intacta. Estas
 pruebas **no** validan outbox, reconciliación ni transcripción ASR.
 
+La integración **Beat D07 → Redis aislado → worker D07** también pasó:
+se configuró una sola tarea temporal `capturas.limpiar_audio_temporal`
+cada tres segundos, se enviaron/recibieron/ejecutaron correctamente tres
+tareas con resultado 0, quedaron vacías las colas `celery` y `unacked`,
+el worker D07 permaneció `healthy` y Beat permanente detenido
+(`homex-d07-beat-worker-d07-integracion-ok`). Los componentes de
+producción siguieron intactos. Queda pendiente el retorno del worker
+a D04 y revalidar la integración; las tareas reales de outbox y ASR
+continúan fuera de este ensayo.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

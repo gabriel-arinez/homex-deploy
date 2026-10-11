@@ -195,6 +195,32 @@ D04 → D07, rollback de código/imágenes entre versiones ni fallo a mitad de
 una migración. El entorno de ensayo queda conservado hasta autorizar limpieza
 aislada; la promoción productiva sigue pendiente.
 
+### Evidencia adicional de transición D04 → D07 → D04 (11-10-2026)
+
+Se compararon 34 archivos de migración de las aplicaciones entre las imágenes
+`homex/backend:d04-9ce7230` y `homex/backend:d07-bc37589` por SHA-256:
+**0 añadidos, 0 eliminados y 0 modificados**. Los archivos de modelos de
+clientes, catálogo y pedidos también coincidieron por SHA-256.
+
+En el namespace descartable `homex-d07-upgrade` se inicializó PostgreSQL
+con D04 y se creó mediante su ORM un escenario comercial sintético:
+cliente ID 2, silla ID 2, carga inicial 10 unidades, proforma 970000001
+por Bs 700, aprobación que generó automáticamente pedido ID 2 y venta
+de 2 unidades, quedando stock 8. Un primer intento sin stock fue rechazado
+correctamente por el trigger y su transacción se revirtió.
+
+Sin reconstruir PostgreSQL, se ejecutó `migrate` con la imagen D07:
+**No migrations to apply**; `runtime-privileges-ok` y verificaciones ORM
+de relaciones, importes, estados, movimientos y 52 migraciones exitosas
+(`homex-d07-upgrade-d04-a-d07-ok`). A continuación se revalidaron los
+mismos datos mediante imagen D04: `manage.py check` sin errores,
+`migrate --check` correcto, `homex-d07-rollback-d04-lectura-ok`.
+
+**Alcance limitado:** compatibilidad de datos y de lectura sobre un fixture
+comercial aislado; no es aún rollback operativo de API/worker/frontend ni
+restauración desde backup previo al cambio. No se modificó `homex-prod`.
+El namespace de ensayo queda pendiente de limpieza al concluir los gates.
+
 ## Seguridad y operación
 
 Se mantienen acceso privado Cloudflare, CA interna, cabeceras, límites de upload, logs sin bodies o

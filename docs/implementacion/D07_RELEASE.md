@@ -242,9 +242,22 @@ certificados eran temporales del ensayo y no se usaron certificados
 productivos. La advertencia de Nginx al intentar modificar una
 configuración de solo lectura no impidió el arranque ni el healthcheck.
 
+Se completó también el retorno del proceso **Celery worker**. La imagen D04
+arrancó `healthy`, con Redis aislado conectado, cuatro tareas registradas,
+concurrencia 1 y consumo de ~97 MiB
+(`homex-d07-worker-d04-healthy-ok`). Al recrear exclusivamente worker con D07
+se obtuvo `healthy`, Redis conectado y ~98 MiB, sin recrear API, frontend,
+PostgreSQL ni Redis (`homex-d07-worker-d07-healthy-ok`). El retorno a worker
+D04 recuperó `healthy`, registro de tareas y conexión a Redis, manteniendo
+API accesible con HTTPS 200 y el resto de contenedores intactos
+(`homex-d07-worker-rollback-d04-ok`). Beat del ensayo permaneció detenido.
+**No** se enviaron tareas de transcripción; el directorio ASR de ensayo
+contiene sólo un `model.bin` vacío y el resultado **no** demuestra capacidad
+de procesar audio.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
-worker/beat, ni restauración desde una unidad anterior a la
+beat ni de tareas ASR, ni restauración desde una unidad anterior a la
 actualización, ni ensayos de fallo a mitad de migración. No se modificó
 `homex-prod`. El namespace de ensayo queda pendiente de limpieza al
 concluir los gates.

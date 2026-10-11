@@ -339,6 +339,16 @@ Los siete servicios productivos permanecieron activos. Este ensayo
 **no** ejecutó ASR ni validó consumo de la tarea; queda pendiente
 paridad de publicación real D04 y escenarios de fallo de broker.
 
+La paridad de **publicación real a Redis** se completó también para
+Outbox D04: `publicar_pendientes` envió una tarea
+`capturas.procesar_intento` a una cola sintética exclusiva, se verificaron
+nombre, ID y argumentos, se retiró el mensaje, se revirtieron los
+registros PostgreSQL y `celery`/`unacked` permanecieron vacías
+(`homex-d07-outbox-redis-publicacion-d04-ok`,
+`homex-d07-outbox-redis-d04-validacion-ok`). D04 y D07 pasaron
+la misma prueba; no hubo consumo por el worker ni ejecución de ASR.
+Pendiente ensayar fallo de envío al broker y recuperación de Outbox.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

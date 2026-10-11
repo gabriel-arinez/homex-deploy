@@ -146,6 +146,27 @@ se crean sin cambiar el almacenamiento comercial `filesystem`; R2 se usa
 ni iniciar D08 hasta completar los gates restantes y revisar la evidencia física.
 El PR #8 continúa abierto sin merge.
 
+### Guardia de migración controlada (11-10-2026)
+
+La revisión del script en el host demostró que `backup.sh` **reanuda**
+API/worker/beat al terminar su captura consistente. El `deploy.sh` anterior
+ejecutaba inmediatamente `migrate` con esos escritores D04 funcionando;
+esto no es seguro frente a migraciones no compatibles.
+
+Ahora `deploy.sh`, después del backup, identifica los escritores activos
+(`api`, `worker`, `beat`, `publisher`, `reconciler`, `cleanup`),
+los detiene antes de `migrate` y sólo inicia la release D07 después de
+migraciones y concesión de privilegios. Un error **previo** al inicio de
+migraciones intenta reponer los escritores detenidos; si una migración empezó
+y posteriormente falla, **no** se reactivan procesos D04 automáticamente
+contra un esquema potencialmente modificado: intervención mediante el
+runbook de recuperación y unidad respaldada.
+
+Esto es una mejora preventiva del procedimiento, **no evidencia de que un
+despliegue D07 productivo ya haya ocurrido**. Queda ensayar en namespace
+aislado la recuperación de una migración fallida y verificar que el servicio
+diario de backup no coincida con la ventana de promoción.
+
 ## Seguridad y operación
 
 Se mantienen acceso privado Cloudflare, CA interna, cabeceras, límites de upload, logs sin bodies o

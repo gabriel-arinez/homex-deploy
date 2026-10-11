@@ -362,6 +362,16 @@ Se retiró el mensaje, se revirtieron los registros sintéticos y
 Queda pendiente la paridad D04 para este escenario y la
 reconciliación integrada de eventos.
 
+La paridad D04/D07 de **fallo de conexión y recuperación de Outbox**
+también se confirmó para D04: fallo TCP simulado a puerto Redis
+inaccesible, conservación de trabajo y clave única, reintento real
+publicado en cola exclusiva de Redis aislado, mensaje de prueba retirado,
+transacción PostgreSQL revertida y colas operativas intactas
+(`homex-d07-outbox-fallo-recuperacion-d04-ok`,
+`homex-d07-outbox-recuperacion-d04-validada-ok`). D04 y D07 superaron
+el mismo escenario, sin detener Redis ni ejecutar ASR. Siguiente control:
+reconciliación de publicaciones antiguas y reenvío seguro.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

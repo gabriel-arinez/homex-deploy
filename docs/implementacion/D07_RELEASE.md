@@ -313,6 +313,20 @@ se alteraron: `homex-d07-rollback-celery-funcional-completo-ok`.
 compatibilidad y rollback de Celery para esta tarea**; ASR real,
 outbox y recuperación integral desde respaldo no están cubiertos.
 
+La **lógica transaccional de Outbox** se comprobó en D04 y D07 con
+nueve verificaciones por versión: trigger de creación de trabajo por
+intento, publicación con emisor simulado, no duplicación, registro de
+fallo, reintento, reconciliación de trabajo antiguo, reconciliación
+idempotente, límite de publicaciones y rollback de la transacción.
+Ambas imágenes pasaron y quedaron cero capturas, intentos y trabajos
+persistidos; Redis `celery`/`unacked` quedó vacío:
+`homex-d07-outbox-d04-validacion-completa-ok` y
+`homex-d07-outbox-d07-validacion-completa-ok`.
+La primera versión del ensayo intentaba insertar un trabajo duplicado;
+se corrigió para consumir el trabajo creado automáticamente por
+`trg_crear_outbox_intento`. **Pendiente:** publicación real en Redis,
+entrega/consumo seguro y pruebas de fallos de broker, sin activar ASR.
+
 **Alcance limitado:** la transición D04 → D07 → D04 valida lectura
 comercial y retorno operativo **de la API**, no rollback integral de
 beat ni de tareas ASR, ni restauración desde una unidad anterior a la

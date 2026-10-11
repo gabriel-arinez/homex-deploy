@@ -71,6 +71,39 @@ que no contiene audio. `backup_and_offsite.sh` encadena backup local y copia ext
 systemd versionadas ejecutan el flujo a las 03:00, con `Persistent=true`; su destino debe ser un
 mount/proveedor físicamente independiente, no otra carpeta del mismo disco.
 
+### Integración operativa Restic + Cloudflare R2 (10-11 octubre 2026)
+
+La copia externa **operacional** se realiza mediante `scripts/backup_restic.sh` directamente
+sobre Restic/S3 en R2, sin montar el bucket. El operador ya inicializó el repositorio
+cifrado `b1911bc781` en el bucket `homex-backups-prod` y confirmó subida,
+restauración y SHA-256 de un archivo sintético (snapshot `1b2dbe40`).
+Esto no demuestra todavía la recuperación completa de PostgreSQL y media reales.
+
+`scripts/backup_and_offsite.sh` carga la configuración privada desde
+`~/.config/homex/restic-r2.env`, verifica acceso remoto antes de crear una unidad D05,
+ejecuta `backup.sh` y publica la unidad validada mediante Restic. La copia remota
+queda etiquetada con `homex-d07-offsite` y el identificador de unidad `homex-...Z`.
+El flujo comprueba el listado remoto del snapshot; la restauración e integridad se
+prueban en CI con un repositorio local efímero, sin credenciales reales.
+
+`scripts/backup_offsite.sh` y `scripts/test_d07_offsite.sh` se conservan
+temporalmente para el contrato GPG histórico, pero **no se invocan desde el
+servicio Restic**. No se debe configurar ni utilizar la ruta de montaje GPG
+como respaldo productivo paralelo. Planificar su retiro con una fase controlada
+para no romper evidencias de CI previas.
+
+La unidad versionada `systemd/homex-backup.service` se ha adaptado a las rutas
+reales del host de pruebas y se mantiene **sin instalar**. La unidad instalada
+continúa ejecutando únicamente `backup.sh`. Antes de instalar, verificar
+permisos, sandbox systemd, acceso al socket Docker, prueba de restauración
+real aislada y comportamiento ante R2 inaccesible. Sin merge, sin activar timer
+nuevo y sin modificar `homex-prod`.
+
+Los secretos S3 y contraseña de recuperación no se versionan. La retención
+remota aún no se automatiza; no usar `restic forget --prune` hasta validar
+la política y la restauración completa. La verificación de snapshots no
+equivale por sí sola a `restic check --read-data` ni a recuperación probada.
+
 ## Seguridad y operación
 
 Se mantienen acceso privado Cloudflare, CA interna, cabeceras, límites de upload, logs sin bodies o

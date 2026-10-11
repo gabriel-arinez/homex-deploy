@@ -24,7 +24,14 @@ def main() -> None:
     compose=need("docker-compose.yml",'--concurrency=1',BACKEND,FRONTEND)
     need("docker/backend.Dockerfile",'org.opencontainers.image.revision','$HOMEX_BACKEND_REVISION')
     need("docker/frontend.Dockerfile",'org.opencontainers.image.revision','$HOMEX_FRONTEND_REVISION')
-    need("scripts/deploy.sh",'verify_release_images.py','scripts/backup.sh','scripts/smoke.sh')
+    deploy=need("scripts/deploy.sh",'verify_release_images.py','scripts/backup.sh','scripts/smoke.sh',
+                'migration_started=1','run_compose stop $stopped_writers',
+                'run_compose run --rm migrate','run_compose run --rm grant-runtime',
+                'NO reiniciar escritores D04')
+    if not (deploy.index('scripts/backup.sh') < deploy.index('run_compose stop $stopped_writers')
+            < deploy.index('migration_started=1') < deploy.index('run_compose run --rm migrate')
+            < deploy.index('run_compose up -d api worker beat')):
+        raise SystemExit("Orden inseguro de backup/parada/migración/arranque")
     need("scripts/backup_offsite.sh",'sha256sum -c SHA256SUMS','--recipient','$recipient','homex-offsite-encrypted-ok')
     need("scripts/backup_and_offsite.sh",'scripts/backup.sh','scripts/backup_restic.sh','homex-backup-and-offsite-ok')
     need("scripts/backup_restic.sh", "sha256sum -c SHA256SUMS", "restic backup", "restic snapshots", "restic ls", "homex-offsite-restic-ok")

@@ -12,8 +12,22 @@ run_compose() {
 }
 
 run_compose config --quiet
+
+# La promoción exige imágenes GHCR inmutables y verificadas antes de migrar.
+if [ "${HOMEX_RELEASE_IMAGE_BUILD_MODE:-0}" = "1" ]; then
+  echo "El modo de construcción CI está prohibido durante despliegue" >&2
+  exit 1
+fi
+
+# Comprobar las referencias antes de cualquier descarga o modificación.
+HOMEX_REQUIRE_COMPOSE_MATCH=1 HOMEX_ENV_FILE="$env_file" HOMEX_COMPOSE_FILES="$compose_files" \
+  HOMEX_RELEASE_IMAGE_PRECHECK=1 python3 scripts/verify_release_images.py
+
+run_compose pull --policy always api worker frontend-proxy monitor
+
 HOMEX_REQUIRE_COMPOSE_MATCH=1 HOMEX_ENV_FILE="$env_file" HOMEX_COMPOSE_FILES="$compose_files" \
   python3 scripts/verify_release_images.py
+
 run_compose up -d postgres redis
 
 # shellcheck disable=SC2016

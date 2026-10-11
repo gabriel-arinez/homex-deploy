@@ -134,7 +134,7 @@ services:
       start_period: 5s
 
   monitor:
-    image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-3e05362}
+    image: ${HOMEX_BACKEND_IMAGE_REF:-homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-3e05362}}
     profiles: [observability]
     logging: *json-logging
     pids_limit: ${HOMEX_MONITOR_PIDS:-64}

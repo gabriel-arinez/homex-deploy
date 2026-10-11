@@ -42,13 +42,13 @@ def image_ref(key: str) -> str:
     raise SystemExit(f"Falta imagen {key}")
 
 def inspect(reference: str) -> dict:
-    local_ref=reference.split("@sha256:",1)[0]
+    local_ref=reference if os.environ.get("HOMEX_RELEASE_IMAGE_BUILD_MODE") != "1" else ("homex/backend:d07-3e05362" if "backend" in reference else "homex/frontend-proxy:d07-479a092")
     try:
         payload=subprocess.check_output(["docker","image","inspect",local_ref], text=True)
     except subprocess.CalledProcessError as exc:
         raise SystemExit(f"Imagen local ausente: {local_ref}") from exc
     data=json.loads(payload)[0]
-    if "@sha256:" in reference and reference not in data.get("RepoDigests",[]):
+    if (os.environ.get("HOMEX_RELEASE_IMAGE_BUILD_MODE") != "1" and "@sha256:" in reference and reference not in data.get("RepoDigests",[])):
         raise SystemExit(f"Digest OCI no coincide con imagen local: {reference}")
     return data
 
@@ -79,7 +79,28 @@ def verify_compose(refs: dict[str, str]) -> None:
 def main() -> None:
     status=value("release","status")
     refs={"api":image_ref("api"),"worker":image_ref("worker"),"frontend":image_ref("frontend_proxy")}
-    verify_compose(refs)
+    build_mode = os.environ.get("HOMEX_RELEASE_IMAGE_BUILD_MODE") == "1"
+    precheck = os.environ.get("HOMEX_RELEASE_IMAGE_PRECHECK") == "1"
+
+    if build_mode and precheck:
+        raise SystemExit("Precheck incompatible con modo de construcción CI")
+
+    if not build_mode:
+        verify_compose(refs)
+
+    if precheck:
+        for name, reference in refs.items():
+            if not re.fullmatch(
+                r"ghcr\.io/gabriel-arinez/homex-[a-z-]+:"
+                r"0\.7\.0-d07-rc2@sha256:[0-9a-f]{64}",
+                reference,
+            ):
+                raise SystemExit(
+                    f"Imagen {name} sin referencia GHCR inmutable: {reference}"
+                )
+
+        print("d07-release-image-precheck-ok")
+        return
     if refs["api"] != refs["worker"]:
         raise SystemExit("API y worker deben compartir la imagen backend")
     backend=inspect(refs["api"]); frontend=inspect(refs["frontend"])

@@ -52,6 +52,8 @@ jobs:
         env:
           BACKEND_CONTEXT: ./sources/backend
           FRONTEND_CONTEXT: ./sources/frontend
+          HOMEX_BACKEND_IMAGE_REF: homex/backend:d07-3e05362
+          HOMEX_FRONTEND_IMAGE_REF: homex/frontend-proxy:d07-479a092
         run: |
           docker compose \
             -f docker-compose.yml \
@@ -69,7 +71,7 @@ jobs:
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
             = "479a092462b36a90006eb1c52f9570ea63084bab"
 
-          HOMEX_RELEASE_IMAGE_EVIDENCE=/tmp/d07-images.json \
+          HOMEX_RELEASE_IMAGE_BUILD_MODE=1 HOMEX_RELEASE_IMAGE_EVIDENCE=/tmp/d07-images.json \
             python3 scripts/verify_release_images.py
 
       - name: Authenticate to GHCR

@@ -15,7 +15,7 @@ def need(path: str, *parts: str) -> str:
     return text
 
 def main() -> None:
-    manifest=need("releases/manifest.yaml",'version: "0.7.0-d07-rc2"','status: candidate',BACKEND,FRONTEND,NLP,'api: homex/backend:d07-3e05362','frontend_proxy: homex/frontend-proxy:d07-479a092')
+    manifest=need("releases/manifest.yaml",'version: "0.7.0-d07-rc2"','status: candidate',BACKEND,FRONTEND,NLP,'api: ghcr.io/gabriel-arinez/homex-backend:0.7.0-d07-rc2@sha256:0a9f7f0e7650304808fe8d99227648ef42b34507c11d3ed86adbd8176391166a','frontend_proxy: ghcr.io/gabriel-arinez/homex-frontend-proxy:0.7.0-d07-rc2@sha256:023cad7b1d64520e5e3d2d407d27ed6224c88ae1c2f4bcbd0b74c24b0bebe15c')
     if "latest" in manifest: raise SystemExit("El manifiesto D07 usa latest")
     schema=json.loads((ROOT/"releases/manifest.schema.json").read_text())
     released=json.dumps(schema)

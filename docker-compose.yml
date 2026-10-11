@@ -20,7 +20,7 @@ x-backend-environment: &backend-environment
   HOMEX_ASR_COMPUTE_TYPE: ${HOMEX_ASR_COMPUTE_TYPE:-int8}
 
 x-backend-image: &backend-image
-  image: homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-3e05362}
+  image: ${HOMEX_BACKEND_IMAGE_REF:-homex/backend:${HOMEX_BACKEND_IMAGE_TAG:-d07-3e05362}}
   build:
     context: .
     dockerfile: docker/backend.Dockerfile
@@ -181,7 +181,7 @@ services:
     networks: [data]
 
   frontend-proxy:
-    image: homex/frontend-proxy:${HOMEX_FRONTEND_IMAGE_TAG:-d07-479a092}
+    image: ${HOMEX_FRONTEND_IMAGE_REF:-homex/frontend-proxy:${HOMEX_FRONTEND_IMAGE_TAG:-d07-479a092}}
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile

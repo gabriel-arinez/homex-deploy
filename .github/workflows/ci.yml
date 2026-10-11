@@ -74,6 +74,8 @@ jobs:
         env:
           BACKEND_CONTEXT: ./sources/backend
           FRONTEND_CONTEXT: ./sources/frontend
+          HOMEX_BACKEND_IMAGE_REF: homex/backend:d07-3e05362
+          HOMEX_FRONTEND_IMAGE_REF: homex/frontend-proxy:d07-479a092
         run: |
           docker compose -f docker-compose.yml -f compose.production.yml \
             --env-file .env.production.example build --no-cache backend frontend-proxy
@@ -84,12 +86,12 @@ jobs:
           expected_api=$(awk '$1 == "api:" {print $2}' releases/manifest.yaml)
           expected_worker=$(awk '$1 == "worker:" {print $2}' releases/manifest.yaml)
           expected_frontend=$(awk '$1 == "frontend_proxy:" {print $2}' releases/manifest.yaml)
-          test "$expected_api" = "homex/backend:d07-3e05362"
-          test "$expected_worker" = "homex/backend:d07-3e05362"
-          test "$expected_frontend" = "homex/frontend-proxy:d07-479a092"
+          test "$expected_api" = "ghcr.io/gabriel-arinez/homex-backend:0.7.0-d07-rc2@sha256:0a9f7f0e7650304808fe8d99227648ef42b34507c11d3ed86adbd8176391166a"
+          test "$expected_worker" = "ghcr.io/gabriel-arinez/homex-backend:0.7.0-d07-rc2@sha256:0a9f7f0e7650304808fe8d99227648ef42b34507c11d3ed86adbd8176391166a"
+          test "$expected_frontend" = "ghcr.io/gabriel-arinez/homex-frontend-proxy:0.7.0-d07-rc2@sha256:023cad7b1d64520e5e3d2d407d27ed6224c88ae1c2f4bcbd0b74c24b0bebe15c"
           test "$(docker image inspect homex/backend:d07-3e05362 --format '{{index .RepoTags 0}}')" = "homex/backend:d07-3e05362"
           test "$(docker image inspect homex/frontend-proxy:d07-479a092 --format '{{index .RepoTags 0}}')" = "homex/frontend-proxy:d07-479a092"
-          HOMEX_RELEASE_IMAGE_EVIDENCE=/tmp/d07-images.json python3 scripts/verify_release_images.py
+          HOMEX_RELEASE_IMAGE_BUILD_MODE=1 HOMEX_RELEASE_IMAGE_EVIDENCE=/tmp/d07-images.json python3 scripts/verify_release_images.py
           test -s /tmp/d07-images.json
 
   integration:

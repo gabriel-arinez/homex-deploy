@@ -104,3 +104,9 @@ El manifiesto `0.7.0-d07-rc2` fija Backend F10, NLP F10 y FE09. El estado `relea
 OCI; los tags derivados de SHA sólo identifican la candidata. El cierre, los gates y los bloqueos
 operacionales están en `docs/implementacion/D07_RELEASE.md`. La copia externa cifrada se ejecuta con
 `scripts/backup_and_offsite.sh`.
+
+## Estado tras el merge D07 RC2 — 2026-10-11
+
+D07 fue **fusionada en `main`** mediante el PR [#8](https://github.com/gabriel-arinez/homex-deploy/pull/8), commit `1870f1646f977045ce4ffa7762d9f8dd759fcd2c`. La versión `0.7.0-d07-rc2` permanece **`candidate`**, no `released`, y `homex-prod` continúa en D04; ninguna operación de promoción física está autorizada por el merge.
+
+La evidencia transversal, referencias exactas de los cuatro repositorios, pruebas, limitaciones y pendientes se consultan en [trazabilidad D07 RC2](docs/D07_TRAZABILIDAD_INTERREPOSITORIO_20261011.md) y [cierre de implementación con pendientes](docs/implementacion/D07_CIERRE_PENDIENTES_20261011.md). D08/piloto y la validación operacional/productiva siguen pendientes.

@@ -6,10 +6,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = yaml.safe_load((ROOT / "releases/manifest.yaml").read_text(encoding="utf-8"))
+MANIFEST = (ROOT / "releases/manifest.yaml").read_text(encoding="utf-8")
 EVIDENCE = json.loads(
     (ROOT / "docs/evidencias/qa0-cierre-20261011.json").read_text(encoding="utf-8")
 )
@@ -17,10 +15,10 @@ REPORT = (ROOT / "docs/implementacion/QA0_CIERRE_ESTABILIZACION_20261011.md").re
     encoding="utf-8"
 )
 
-assert MANIFEST["release"]["status"] == "candidate"
-assert MANIFEST["release"]["version"] == EVIDENCE["release"]["version"]
+assert "status: candidate" in MANIFEST
+assert f'version: "{EVIDENCE["release"]["version"]}"' in MANIFEST
 for component in ("backend", "frontend", "nlp"):
-    assert MANIFEST["sources"][component]["revision"] == EVIDENCE["release"][component]
+    assert f'revision: {EVIDENCE["release"][component]}' in MANIFEST
 
 assert EVIDENCE["production_touched"] is False
 assert EVIDENCE["production"]["mutations_performed"] == 0

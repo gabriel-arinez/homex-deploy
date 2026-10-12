@@ -1106,3 +1106,11 @@ Una fase está terminada únicamente cuando:
 - [ ] rollback/restore ensayado.
 
 **Principio final:** homex-deploy no adelanta el negocio. Su trabajo comienza temprano para dar a frontend/backend un entorno real de integración, pero una release sólo se promueve cuando las fases de aplicación que consume están formalmente cerradas y sus versiones quedan inmovilizadas en un manifiesto reproducible.
+
+---
+
+## Actualización coordinada al 11-10-2026 — D07 RC2
+
+D07 implementación fusionada en main por PR #8, commit 1870f1646f977045ce4ffa7762d9f8dd759fcd2c. Candidata 0.7.0-d07-rc2 con digests GHCR fijados; pruebas de recuperación operativa integral, validaciones físicas, R2 y autorización para despliegue quedan pendientes. D08 y piloto no iniciados.
+
+La descripción completa, los gates ejecutados, sus límites y el orden de reanudación están en [trazabilidad D07 RC2](D07_TRAZABILIDAD_INTERREPOSITORIO_20261011.md). Este registro actualiza el **estado** de las fases sin reemplazar sus requisitos originales ni atribuir éxito a puertas todavía pendientes.

@@ -1114,3 +1114,15 @@ Una fase está terminada únicamente cuando:
 D07 implementación fusionada en main por PR #8, commit 1870f1646f977045ce4ffa7762d9f8dd759fcd2c. Candidata 0.7.0-d07-rc2 con digests GHCR fijados; pruebas de recuperación operativa integral, validaciones físicas, R2 y autorización para despliegue quedan pendientes. D08 y piloto no iniciados.
 
 La descripción completa, los gates ejecutados, sus límites y el orden de reanudación están en [trazabilidad D07 RC2](D07_TRAZABILIDAD_INTERREPOSITORIO_20261011.md). Este registro actualiza el **estado** de las fases sin reemplazar sus requisitos originales ni atribuir éxito a puertas todavía pendientes.
+
+## Adenda QA0 — estabilización técnica cerrada (2026-10-11)
+
+El Apartado 0 de estabilización técnica quedó cerrado mediante recuperación
+D04 → D07 RC2 → D04 en dos namespaces aislados, incluido un fallo real después
+de iniciar DDL, rollback de datos/media/servicios, resiliencia Outbox/Redis/
+Celery, concurrencia, fencing y restore Restic/R2. La evidencia autoritativa es
+[`docs/implementacion/QA0_CIERRE_ESTABILIZACION_20261011.md`](implementacion/QA0_CIERRE_ESTABILIZACION_20261011.md).
+
+Este cierre no promueve D07, no habilita D08/F11 y no modifica la candidata
+`0.7.0-d07-rc2`, que conserva estado `candidate`. Retención remota automática,
+alertas externas y branch protection requieren decisiones operativas futuras.

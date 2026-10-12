@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "observed_at": "2026-10-11T22:46:00-04:00",
+  "scope": "apartado-0-estabilizacion-tecnica",
+  "production_touched": false,
+  "release": {
+    "version": "0.7.0-d07-rc2",
+    "status": "candidate",
+    "backend": "3e05362ac49c170963a8dc1d32b4d612e491112f",
+    "frontend": "479a092462b36a90006eb1c52f9570ea63084bab",
+    "nlp": "79efeaf6a8ca738eb3abce414850f973b1962fd8"
+  },
+  "main": {
+    "frontend": "70883b0603c0820c878dad4449c5ef2bbcc20e7b",
+    "backend": "a715876cc9b3c4a85aa397e736e60b18b90085fa",
+    "nlp": "0390a461551f105d138ef4e73aae57e7e16c7360",
+    "deploy_base": "d4f9026d7c41032cdab0e36fc097cee80f2fc672"
+  },
+  "github_actions": {
+    "frontend": {"run": 38192027974, "jobs": 12, "conclusion": "success"},
+    "backend": {"run": 38188201596, "conclusion": "success"},
+    "nlp": {"run": 38188210073, "conclusion": "success"},
+    "deploy": {"run": 38192289486, "jobs": 13, "conclusion": "success"}
+  },
+  "isolated_namespaces": ["homex-qa0-20261011", "homex-qa0-failure-20261011"],
+  "recovery": {
+    "initial_d04_restore": "PASS",
+    "d04_to_rc2": "PASS",
+    "migration_failure_after_ddl": "PASS",
+    "writers_remained_stopped": "PASS",
+    "rollback_to_d04": "PASS",
+    "markers": ["homex-restore-ok", "runtime-privileges-ok", "db-media-integrity-ok"],
+    "media": {"referenced": 8, "present": 8, "missing": 0, "unreferenced": 0},
+    "d04_migrations": 52,
+    "d04_capturas_migrations": 7,
+    "rc2_migrations": 53,
+    "rc2_capturas_migrations": 8
+  },
+  "resilience": {
+    "redis_real_outage": "PASS",
+    "worker_stopped_then_recovered": "PASS",
+    "outbox_single_message": "PASS",
+    "idempotent_duplicate": "PASS",
+    "concurrent_duplicate": "PASS",
+    "execution_fencing": "PASS",
+    "single_item_ia": "PASS",
+    "audio_cleanup": "PASS",
+    "audio_in_backup": false
+  },
+  "restic": {
+    "snapshots": 3,
+    "repository_check": "PASS",
+    "restored_snapshot": "f2a5e6e0843d",
+    "restored_checksums": "PASS",
+    "isolated_connectivity_failure": "PASS",
+    "credentials_mode": "0600"
+  },
+  "production": {
+    "compose_project": "homex-prod",
+    "running_services": 7,
+    "runtime_release": "D04",
+    "cloudflared": "active",
+    "mutations_performed": 0
+  }
+}

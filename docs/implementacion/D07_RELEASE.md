@@ -555,3 +555,9 @@ escribible, no el volumen multimedia restaurado.
 
 La candidata permanece `candidate`. No se autoriza merge,
 tag final, promoción D07 ni inicio D08 con estas pruebas.
+
+## Adenda final — integración de implementación en main (2026-10-11)
+
+La instrucción explícita de cierre de jornada permitió **fusionar la implementación D07 RC2** mediante PR #8 y commit `1870f1646f977045ce4ffa7762d9f8dd759fcd2c` sin completar las puertas productivas. Esta decisión actualiza únicamente el criterio de **merge del código** expresado en secciones históricas RC1/RC2; **no** equivale a validar rollback operacional completo ni a autorizar despliegue/promoción a `released`.
+
+Los digests GHCR definitivos sí fueron fijados y verificados posteriormente a la lista histórica de pendientes RC2: backend `sha256:0a9f7f0e7650304808fe8d99227648ef42b34507c11d3ed86adbd8176391166a`, frontend-proxy `sha256:023cad7b1d64520e5e3d2d407d27ed6224c88ae1c2f4bcbd0b74c24b0bebe15c`. El manifiesto conserva `candidate`. Para el detalle de todas las comprobaciones, evidencias, límites y trabajo diferido consultar [trazabilidad interrepositorio](../D07_TRAZABILIDAD_INTERREPOSITORIO_20261011.md) y [cierre con pendientes](D07_CIERRE_PENDIENTES_20261011.md). Se prohíbe interpretar la evidencia de recuperación parcial D04 del 11-10 como restauración operativa integral.

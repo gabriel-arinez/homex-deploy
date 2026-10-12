@@ -41,3 +41,12 @@ Mantener `homex-prod` y su Cloudflare sin intervención. No promover RC2 ni ejec
 ## Condición para completar apartado 0
 
 No declarar CERRADO mientras falte recuperación aislada integral PASS, pruebas reales de resilience, comprobación Restic/R2 y CI final de todas las `main`. Los ensayos físicos y promoción productiva D07 permanecen diferidos por decisión funcional.
+
+## Adenda de cierre en host
+
+Las limitaciones remotas de esta acta fueron resueltas posteriormente mediante
+dos namespaces aislados en el host. El cierre autoritativo, la matriz
+`PASS / BLOCKED / NOT RUN`, los comandos de reproducción y la evidencia
+versionada se encuentran en
+[`QA0_CIERRE_ESTABILIZACION_20261011.md`](QA0_CIERRE_ESTABILIZACION_20261011.md).
+Esta adenda no cambia `homex-prod`, no promueve RC2 y no habilita D08/F11.

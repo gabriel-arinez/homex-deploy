@@ -37,3 +37,16 @@
 
 - `D07_RELEASE.md` incluye observaciones históricas RC1/RC2 y frases anteriores que condicionaban el merge a la validación completa. La decisión actual es **merge de implementación con pendientes expresos**, no aprobación de release productiva; prevalece este criterio para interpretar el estado posterior.
 - Las verificaciones locales comunicadas durante el ensayo no sustituyen una inspección directa actual de procesos/volúmenes ni pruebas nuevas.
+
+## Adenda QA0 — recuperación técnica completada
+
+El 2026-10-11 se completaron en dos namespaces nuevos la recuperación D04,
+actualización RC2, fallo real posterior a DDL, fencing de escritores y rollback
+operacional D04 con PostgreSQL, ocho medios referenciados, Redis, API, proxy,
+worker y beat. También se validaron caída real de Redis, Outbox, concurrencia,
+fencing y restore Restic/R2. Véase
+[`QA0_CIERRE_ESTABILIZACION_20261011.md`](QA0_CIERRE_ESTABILIZACION_20261011.md).
+
+Esto cierra el Apartado 0 técnico. Continúan pendientes, y fuera de este cierre,
+la promoción productiva de D07, pruebas físicas definitivas, política remota
+aprobada, canal de alertas y branch protection. RC2 permanece `candidate`.

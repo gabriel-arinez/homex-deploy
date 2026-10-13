@@ -1134,3 +1134,9 @@ La gobernanza transversal que regirá AP2–AP5 se encuentra en
 Esta adenda regula calidad, revisión y trazabilidad; no reabre QA0 ni
 promociona el candidato D07 RC2. Las protecciones de `main` deben
 validarse separadamente en GitHub antes de declararlas activas.
+
+## Adenda AP6 — trazabilidad sin promoción (2026-10-13)
+
+AP6 requiere una release posterior a RC2 y no autoriza despliegue productivo. Los controles y el
+orden de fijación interrepositorio están en
+[`docs/implementacion/AP6_TRAZABILIDAD.md`](implementacion/AP6_TRAZABILIDAD.md).

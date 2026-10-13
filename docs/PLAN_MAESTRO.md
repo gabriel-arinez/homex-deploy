@@ -1126,3 +1126,11 @@ Celery, concurrencia, fencing y restore Restic/R2. La evidencia autoritativa es
 Este cierre no promueve D07, no habilita D08/F11 y no modifica la candidata
 `0.7.0-d07-rc2`, que conserva estado `candidate`. Retención remota automática,
 alertas externas y branch protection requieren decisiones operativas futuras.
+
+## Adenda de gobernanza AP1 — 12/10/2026
+
+La gobernanza transversal que regirá AP2–AP5 se encuentra en
+[Estándar de ingeniería y gobernanza](gobernanza/ESTANDAR_INGENIERIA_AP1.md).
+Esta adenda regula calidad, revisión y trazabilidad; no reabre QA0 ni
+promociona el candidato D07 RC2. Las protecciones de `main` deben
+validarse separadamente en GitHub antes de declararlas activas.

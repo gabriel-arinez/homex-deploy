@@ -143,6 +143,8 @@ def names(path: str) -> list[str]:
     for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if line and not line.startswith("#"):
+            if raw_line != raw_line.lstrip():
+                raise SystemExit(f"{path}: espacios antes de declaración: {line!r}")
             if "=" not in line:
                 raise SystemExit(f"{path}: declaración de entorno sin '=': {line!r}")
             name, _value = line.split("=", 1)

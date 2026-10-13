@@ -24,6 +24,8 @@ jobs:
       - run: docker compose -f docker-compose.yml -f compose.d03-media.yml --env-file .env.example config --quiet
       - run: docker compose -f docker-compose.yml -f compose.production.yml --env-file .env.production.example --profile operations config --quiet
       - run: python3 scripts/validate_env_contract.py
+      - name: AP2 regression of malformed env and duplicate keys
+        run: python3 scripts/test_ap2_env_contract.py
       - run: python3 scripts/test_d02_contract.py
       - run: python3 scripts/test_d03_contract.py
       - run: python3 scripts/test_d04_contract.py

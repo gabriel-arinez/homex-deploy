@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Valida contratos de entorno staging y producción sin secretos reales."""
 
+import re
 from pathlib import Path
 
 
@@ -142,7 +143,14 @@ def names(path: str) -> list[str]:
     for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if line and not line.startswith("#"):
-            result.append(line.split("=", 1)[0])
+            if raw_line != raw_line.lstrip():
+                raise SystemExit(f"{path}: espacios antes de declaración: {line!r}")
+            if "=" not in line:
+                raise SystemExit(f"{path}: declaración de entorno sin '=': {line!r}")
+            name, _value = line.split("=", 1)
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", name):
+                raise SystemExit(f"{path}: nombre de variable inválido: {name!r}")
+            result.append(name)
     return result
 
 

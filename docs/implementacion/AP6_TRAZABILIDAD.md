@@ -32,3 +32,32 @@ aislada, comprobar la preservación del JSON y ensayar rollback/restore como uni
 media. La migración no afecta audio temporal ni autoriza conservarlo. Backend debe fijarse antes del
 frontend regenerado; NLP conserva wheel `0.1.0` y contrato v1. El diagnóstico AP6.0.21 está en
 `~/Descargas/ap6021-diagnostico-20261014/`; no se modificó `homex-prod`.
+
+
+## AP6.0.21 — corrección de auditoría: actualización de fichas aprobadas
+
+La migración histórica `proformas.0009` está aplicada en algunos entornos y **no se
+reescribe**. Si una base está todavía en `0008` y contiene especificaciones asociadas a
+proformas `APROBADA`, el trigger PostgreSQL de inmutabilidad bloqueará el `UPDATE`
+que hace la migración de datos. Por ello, el gate previo de una futura release debe
+verificar las migraciones efectivas y **contar esas fichas**, no asumir que están vacías.
+
+En una copia PostgreSQL restaurada y aislada, con backup íntegro de la base y media
+asociada, verificar checksum SHA-256 y ejecutar desde el backend compatible
+`scripts/ap6021_upgrade_aprobadas.py` con `--backup`, `--sha256`,
+`--expected-database` y `--confirm AP6021-UPGRADE-CONTROLADO`. El script
+aplica `0009` y `0010` dentro de una única transacción, desactiva exclusivamente
+el trigger de especificaciones mientras posee bloqueo exclusivo de su tabla,
+comprueba igualdad de todos los JSON migrados y lo reactiva antes del commit.
+Si falla, el rollback PostgreSQL de la transacción restaura también el estado
+del trigger. El CI del backend crea y **restaura** un `pg_dump -Fc` de prueba,
+migra una ficha `APROBADA` y otra `BORRADOR` y revalida inmutabilidad.
+
+Si `0009` ya está aplicada, sólo se requiere migrar `0010` normalmente y
+confirmar el esquema. Desde `0010` el downgrade Django a `0009/0008` está
+deliberadamente prohibido para evitar perder `datos_tecnicos`: el procedimiento
+de reversión es restaurar backup PostgreSQL y media consistentes con la
+versión anterior de backend/frontend, con ensayo del restore previo.
+
+Esta guía **no autoriza** ejecutar las migraciones contra `homex-prod`,
+actualizar manifiestos/digests, desplegar una release ni promover D07 RC2.

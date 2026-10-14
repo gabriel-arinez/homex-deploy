@@ -1140,3 +1140,10 @@ validarse separadamente en GitHub antes de declararlas activas.
 AP6 requiere una release posterior a RC2 y no autoriza despliegue productivo. Los controles y el
 orden de fijación interrepositorio están en
 [`docs/implementacion/AP6_TRAZABILIDAD.md`](implementacion/AP6_TRAZABILIDAD.md).
+
+### AP6.0.21 — trazabilidad de migración JSONB
+
+La consolidación de especificaciones técnicas requiere una release posterior a RC2 y el orden
+backend migrado → OpenAPI/frontend regenerado. No altera la arquitectura deploy ni autoriza una
+promoción. Los controles previos de backup, actualización aislada y restore están en
+[`docs/implementacion/AP6_TRAZABILIDAD.md`](implementacion/AP6_TRAZABILIDAD.md).

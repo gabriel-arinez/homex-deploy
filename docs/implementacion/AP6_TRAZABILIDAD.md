@@ -20,3 +20,15 @@ manifiesto definitivo sólo puede fijarse después de que los PR de los cuatro r
 
 Los diagnósticos locales de AP6 se guardan fuera de los repositorios en
 `~/Descargas/ap6-preflight-20261013/`. No contienen secretos ni datos productivos promovidos.
+
+## AP6.0.21 — migración posterior requerida
+
+AP6.0.21 reemplaza las columnas técnicas paralelas de `especificaciones_mueble` por
+`datos_tecnicos JSONB` mediante una migración Django nueva. No cambia contenedores, red, storage,
+backups ni secretos. La candidata D07 RC2 permanece inmóvil y no incorpora estos cambios.
+
+Antes de una release posterior se debe respaldar PostgreSQL, ejecutar la migración sobre una copia
+aislada, comprobar la preservación del JSON y ensayar rollback/restore como unidad coherente con
+media. La migración no afecta audio temporal ni autoriza conservarlo. Backend debe fijarse antes del
+frontend regenerado; NLP conserva wheel `0.1.0` y contrato v1. El diagnóstico AP6.0.21 está en
+`~/Descargas/ap6021-diagnostico-20261014/`; no se modificó `homex-prod`.

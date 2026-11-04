@@ -14,6 +14,7 @@ x-backend-environment: &backend-environment
   HOMEX_MEDIA_STORAGE: ${HOMEX_MEDIA_STORAGE:-filesystem}
   HOMEX_MEDIA_ROOT: ${HOMEX_MEDIA_ROOT:-/var/lib/homex/media}
   HOMEX_MEDIA_URL: ${HOMEX_MEDIA_URL:-/media/}
+  HOMEX_GALLERY_MAX_IMAGES: ${HOMEX_GALLERY_MAX_IMAGES:-8}
   HOMEX_HTTPS_ENABLED: ${HOMEX_HTTPS_ENABLED:-0}
   HOMEX_ASR_MODEL_PATH: /opt/homex/models/faster-whisper-small
   HOMEX_ASR_DEVICE: ${HOMEX_ASR_DEVICE:-cpu}
@@ -78,6 +79,8 @@ services:
       <<: *backend-environment
       DATABASE_URL: ${HOMEX_MIGRATOR_DATABASE_URL:?HOMEX_MIGRATOR_DATABASE_URL is required}
     command: ["python", "manage.py", "migrate", "--noinput"]
+    volumes:
+      - media_persistente:/var/lib/homex/media
     depends_on:
       postgres:
         condition: service_healthy

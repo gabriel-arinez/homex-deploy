@@ -82,7 +82,6 @@ def main() -> None:
     config = json.loads(output)
     api = config["services"]["api"]
     proxy = config["services"]["frontend-proxy"]
-    worker = config["services"]["worker"]
 
     assert api["environment"]["DJANGO_SETTINGS_MODULE"] == "config.settings.production"
     assert api["environment"]["HOMEX_MEDIA_STORAGE"] == "filesystem"
@@ -102,11 +101,13 @@ def main() -> None:
     assert proxy_media["source"] == expected_source
     assert proxy_media.get("read_only") is True
 
-    if any(
-        volume.get("target") == "/var/lib/homex/media"
-        for volume in worker.get("volumes", [])
-    ):
-        raise SystemExit("worker no debe montar media comercial persistente")
+    # Gallery expiration runs in Celery and migration copies legacy private references.
+    for service_name in ("worker", "migrate"):
+        mount = media_mount(config["services"][service_name])
+        assert mount["source"] == expected_source
+        assert not mount.get("read_only", False)
+    for path in ("/media/.private/", "/media/proformas/"):
+        require(nginx, f"location ^~ {path} {{ return 404; }}", "nginx/default.conf")
 
     for service_name in ("api", "worker", "migrate", "publisher", "reconciler", "cleanup"):
         environment = config["services"][service_name].get("environment", {})

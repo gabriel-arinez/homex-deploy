@@ -191,6 +191,26 @@ product_status=$(curl --silent --show-error --output /dev/null --write-out '%{ht
   "$base_url/api/v1/catalogo/productos/$product_id/imagen-principal/")
 test "$product_status" = 204
 
+python3 - "$state_file" "$token_file" "$base_url" <<'PYCODE'
+import json
+import sys
+import urllib.request
+from pathlib import Path
+state=json.loads(Path(sys.argv[1]).read_text())
+token=json.loads(Path(sys.argv[2]).read_text())["access"]
+base=sys.argv[3].rstrip("/")
+path=base+f"/api/v1/catalogo/productos/{state['product_id']}/imagenes/"
+headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"}
+with urllib.request.urlopen(urllib.request.Request(path, headers=headers)) as response:
+    remaining=json.load(response)["imagenes"]
+assert len(remaining)==1 and remaining[0]["principal"]
+for image in remaining:
+    request=urllib.request.Request(path, data=json.dumps({"eliminar":image["id"]}).encode(), headers=headers, method="PATCH")
+    with urllib.request.urlopen(request) as response:
+        assert json.load(response)["imagenes"]==[]
+print("d03-gallery-cover-fallback-and-delete-ok")
+PYCODE
+
 python3 - "$state_file" "$media_dir" <<'PY'
 import json
 import sys

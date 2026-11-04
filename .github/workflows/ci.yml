@@ -164,7 +164,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 3e05362ac49c170963a8dc1d32b4d612e491112f
+          ref: faa8330cbd0420ac1abfa2615db4ea40d8fd231a
           path: sources/backend
       - uses: actions/checkout@v4
         with:

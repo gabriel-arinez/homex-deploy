@@ -26,6 +26,7 @@ from rest_framework.test import APIClient
 from apps.catalogo.models import Producto, ValorCatalogo
 from apps.clientes.models import Cliente
 from apps.documentos.models import ArchivoAdjunto
+from apps.media.storage import privado
 from apps.proformas.services import agregar_detalle, crear_proforma
 
 
@@ -43,10 +44,10 @@ def imagen() -> SimpleUploadedFile:
     )
 
 
-def comprobar_key(key: str) -> str:
+def comprobar_key(key: str, storage=default_storage) -> str:
     assert key
     assert not key.startswith(("/", "http://", "https://"))
-    path = Path(default_storage.path(key)).resolve()
+    path = Path(storage.path(key)).resolve()
     root = Path(settings.MEDIA_ROOT).resolve()
     assert path.is_relative_to(root)
     assert path.is_file()
@@ -131,9 +132,10 @@ def ejecutar() -> None:
         adjunto.ruta_storage,
         *(f"{base}/{width}.webp" for width in (320, 640, 1280)),
     ]
-    attachment_paths = [comprobar_key(key) for key in attachment_keys]
+    attachment_paths = [comprobar_key(key, privado()) for key in attachment_keys]
     attachment_url = response.data["url"]
-    assert "/media/proformas/" in attachment_url
+    assert attachment_url.startswith("/api/v1/imagenes-privadas/")
+    assert adjunto.privado
 
     print(
         json.dumps(
@@ -145,6 +147,7 @@ def ejecutar() -> None:
                 "attachment_id": adjunto.id,
                 "product_keys": product_keys,
                 "attachment_keys": attachment_keys,
+                "attachment_host_keys": [".private/" + key for key in attachment_keys],
                 "product_paths": product_paths,
                 "attachment_paths": attachment_paths,
                 "product_urls": product_urls,

@@ -164,7 +164,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: faa8330cbd0420ac1abfa2615db4ea40d8fd231a
+          ref: 38bc6a94178dad17de8d976a16f4e33ed59bc775
           path: sources/backend
       - uses: actions/checkout@v4
         with:
@@ -254,7 +254,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: gabriel-arinez/homex-backend
-          ref: 3e05362ac49c170963a8dc1d32b4d612e491112f
+          ref: 38bc6a94178dad17de8d976a16f4e33ed59bc775
           path: sources/backend
       - run: python3 scripts/test_media_inventory.py
       - run: python3 scripts/test_d05_contract.py

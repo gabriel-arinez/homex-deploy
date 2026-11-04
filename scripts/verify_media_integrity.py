@@ -17,6 +17,10 @@ import django
 django.setup()
 
 from apps.catalogo.models import Producto
+try:
+    from apps.catalogo.models import ImagenProducto
+except ImportError:
+    ImagenProducto = None  # Historical release images predate relational galleries.
 from apps.documentos.models import ArchivoAdjunto
 from django.conf import settings
 
@@ -41,9 +45,18 @@ def audit() -> dict:
         for key in (product.imagen_principal_variantes or {}).values():
             referenced.add(normalized(key))
 
+    if ImagenProducto is not None:
+        for image in ImagenProducto.objects.all():
+            referenced.add(normalized(image.ruta_storage))
+            for key in image.variantes.values():
+                referenced.add(normalized(key))
+
     for attachment in ArchivoAdjunto.objects.exclude(ruta_storage=""):
-        original = normalized(attachment.ruta_storage)
+        prefix = ".private/" if getattr(attachment, "privado", False) else ""
+        original = normalized(prefix + attachment.ruta_storage)
         referenced.add(original)
+        for key in getattr(attachment, "variantes", {}).values():
+            referenced.add(normalized(prefix + key))
         parent = PurePosixPath(original).parent
         for variant in ALLOWED_VARIANTS:
             candidate = root / parent / variant

@@ -18,6 +18,7 @@ django.setup()
 
 from apps.catalogo.models import Producto
 from apps.documentos.models import ArchivoAdjunto
+from apps.media.storage import privado
 from apps.proformas.models import Proforma
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
@@ -29,8 +30,10 @@ def main() -> None:
     assert Producto.objects.filter(pk=state["product_id"]).exists()
     assert Proforma.objects.filter(pk=state["proforma_id"]).exists()
     assert ArchivoAdjunto.objects.filter(pk=state["attachment_id"]).exists()
-    for key in state["product_keys"] + state["attachment_keys"]:
+    for key in state["product_keys"]:
         assert default_storage.exists(key), key
+    for key in state["attachment_keys"]:
+        assert privado().exists(key), key
     print("d05-restored-data-ok")
 
 

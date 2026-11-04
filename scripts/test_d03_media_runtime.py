@@ -23,9 +23,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 from rest_framework.test import APIClient
 
-from apps.catalogo.models import Producto, ValorCatalogo
+from apps.catalogo.models import ImagenProducto, Producto, ValorCatalogo
 from apps.clientes.models import Cliente
 from apps.documentos.models import ArchivoAdjunto
+from apps.media.storage import privado
 from apps.proformas.services import agregar_detalle, crear_proforma
 
 
@@ -33,9 +34,9 @@ def valor(concepto: str, codigo: str) -> ValorCatalogo:
     return ValorCatalogo.objects.get(concepto__codigo=concepto, codigo=codigo)
 
 
-def imagen() -> SimpleUploadedFile:
+def imagen(color="#356f99") -> SimpleUploadedFile:
     salida = BytesIO()
-    Image.new("RGB", (1600, 900), "#356f99").save(salida, format="PNG")
+    Image.new("RGB", (1600, 900), color).save(salida, format="PNG")
     return SimpleUploadedFile(
         "d03-origen.png",
         salida.getvalue(),
@@ -43,10 +44,10 @@ def imagen() -> SimpleUploadedFile:
     )
 
 
-def comprobar_key(key: str) -> str:
+def comprobar_key(key: str, storage=default_storage) -> str:
     assert key
     assert not key.startswith(("/", "http://", "https://"))
-    path = Path(default_storage.path(key)).resolve()
+    path = Path(storage.path(key)).resolve()
     root = Path(settings.MEDIA_ROOT).resolve()
     assert path.is_relative_to(root)
     assert path.is_file()
@@ -117,6 +118,18 @@ def ejecutar() -> None:
     product_urls = [media["original"], *media["variantes"].values()]
     assert all("/media/productos/" in url for url in product_urls)
 
+    segunda = api.post(f"/api/v1/catalogo/productos/{producto.id}/imagenes/", {"archivo": imagen("#99356f")}, format="multipart")
+    assert segunda.status_code == 200, segunda.data
+    assert len(segunda.data["imagenes"]) == 2
+    product_keys = []
+    product_urls = []
+    for item in ImagenProducto.objects.filter(producto=producto):
+        product_keys.extend([item.ruta_storage, *item.variantes.values()])
+    for item in segunda.data["imagenes"]:
+        product_urls.extend([item["url"], *item["variantes"].values()])
+    product_paths = [comprobar_key(key) for key in product_keys]
+
+
     response = api.post(
         f"/api/v1/proformas/{proforma.id}/detalles/{detalle.id}/archivos/",
         {"archivo": imagen()},
@@ -131,9 +144,10 @@ def ejecutar() -> None:
         adjunto.ruta_storage,
         *(f"{base}/{width}.webp" for width in (320, 640, 1280)),
     ]
-    attachment_paths = [comprobar_key(key) for key in attachment_keys]
+    attachment_paths = [comprobar_key(key, privado()) for key in attachment_keys]
     attachment_url = response.data["url"]
-    assert "/media/proformas/" in attachment_url
+    assert attachment_url.startswith("/api/v1/imagenes-privadas/")
+    assert adjunto.privado
 
     print(
         json.dumps(
@@ -145,6 +159,7 @@ def ejecutar() -> None:
                 "attachment_id": adjunto.id,
                 "product_keys": product_keys,
                 "attachment_keys": attachment_keys,
+                "attachment_host_keys": [".private/" + key for key in attachment_keys],
                 "product_paths": product_paths,
                 "attachment_paths": attachment_paths,
                 "product_urls": product_urls,

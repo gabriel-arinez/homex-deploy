@@ -1,0 +1,17 @@
+# Optional overlay after compose.production.yml. The private bucket must have public access disabled.
+x-s3-environment: &s3-environment
+  HOMEX_MEDIA_STORAGE: s3
+  R2_BUCKET_NAME: ${R2_BUCKET_NAME:-homex-public-media}
+  R2_PRIVATE_BUCKET_NAME: ${R2_PRIVATE_BUCKET_NAME:?R2_PRIVATE_BUCKET_NAME is required}
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required}
+  R2_ENDPOINT_URL: ${R2_ENDPOINT_URL:?R2_ENDPOINT_URL is required}
+  HOMEX_MEDIA_PUBLIC_DOMAIN: ${HOMEX_MEDIA_PUBLIC_DOMAIN:?HOMEX_MEDIA_PUBLIC_DOMAIN is required}
+
+services:
+  migrate:
+    environment: *s3-environment
+  api:
+    environment: *s3-environment
+  worker:
+    environment: *s3-environment

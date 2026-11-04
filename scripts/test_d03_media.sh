@@ -99,7 +99,7 @@ from pathlib import Path
 
 state=json.loads(Path(sys.argv[1]).read_text())
 root=Path(sys.argv[2])
-for key in state["product_keys"] + state["attachment_keys"]:
+for key in state["product_keys"] + state["attachment_host_keys"]:
     path=root / key
     assert path.is_file(), path
 print("d03-host-files-ok")
@@ -114,11 +114,25 @@ from pathlib import Path
 
 state=json.loads(Path(sys.argv[1]).read_text())
 base=sys.argv[2].rstrip("/")
-for value in state["product_urls"] + [state["attachment_url"]]:
+for value in state["product_urls"]:
     parsed=urllib.parse.urlsplit(value)
     path=parsed.path if parsed.scheme else value
     with urllib.request.urlopen(base + path, timeout=10) as response:
         assert response.status == 200
+import urllib.error
+request=urllib.request.Request(base + "/api/v1/auth/token/", data=json.dumps({"username":"d03-media-admin","password":"d03-media-only"}).encode(), headers={"Content-Type":"application/json"})
+with urllib.request.urlopen(request, timeout=10) as response:
+    access=json.load(response)["access"]
+request=urllib.request.Request(base + state["attachment_url"], headers={"Authorization":"Bearer " + access})
+with urllib.request.urlopen(request, timeout=10) as response:
+    assert response.status == 200
+    assert response.headers["Cache-Control"] == "private, no-store"
+for path,expected in [(state["attachment_url"],401),("/media/"+state["attachment_host_keys"][0],404),("/media/"+state["attachment_keys"][0],404)]:
+    try:
+        urllib.request.urlopen(base + path, timeout=10)
+        raise AssertionError("Se expuso una referencia privada")
+    except urllib.error.HTTPError as error:
+        assert error.code == expected, (path,error.code)
 print("d03-nginx-media-ok")
 PY
 
@@ -135,11 +149,25 @@ from pathlib import Path
 
 state=json.loads(Path(sys.argv[1]).read_text())
 base=sys.argv[2].rstrip("/")
-for value in state["product_urls"] + [state["attachment_url"]]:
+for value in state["product_urls"]:
     parsed=urllib.parse.urlsplit(value)
     path=parsed.path if parsed.scheme else value
     with urllib.request.urlopen(base + path, timeout=10) as response:
         assert response.status == 200
+import urllib.error
+request=urllib.request.Request(base + "/api/v1/auth/token/", data=json.dumps({"username":"d03-media-admin","password":"d03-media-only"}).encode(), headers={"Content-Type":"application/json"})
+with urllib.request.urlopen(request, timeout=10) as response:
+    access=json.load(response)["access"]
+request=urllib.request.Request(base + state["attachment_url"], headers={"Authorization":"Bearer " + access})
+with urllib.request.urlopen(request, timeout=10) as response:
+    assert response.status == 200
+    assert response.headers["Cache-Control"] == "private, no-store"
+for path,expected in [(state["attachment_url"],401),("/media/"+state["attachment_host_keys"][0],404),("/media/"+state["attachment_keys"][0],404)]:
+    try:
+        urllib.request.urlopen(base + path, timeout=10)
+        raise AssertionError("Se expuso una referencia privada")
+    except urllib.error.HTTPError as error:
+        assert error.code == expected, (path,error.code)
 print("d03-recreate-persistence-ok")
 PY
 
@@ -163,6 +191,26 @@ product_status=$(curl --silent --show-error --output /dev/null --write-out '%{ht
   "$base_url/api/v1/catalogo/productos/$product_id/imagen-principal/")
 test "$product_status" = 204
 
+python3 - "$state_file" "$token_file" "$base_url" <<'PYCODE'
+import json
+import sys
+import urllib.request
+from pathlib import Path
+state=json.loads(Path(sys.argv[1]).read_text())
+token=json.loads(Path(sys.argv[2]).read_text())["access"]
+base=sys.argv[3].rstrip("/")
+path=base+f"/api/v1/catalogo/productos/{state['product_id']}/imagenes/"
+headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"}
+with urllib.request.urlopen(urllib.request.Request(path, headers=headers)) as response:
+    remaining=json.load(response)["imagenes"]
+assert len(remaining)==1 and remaining[0]["principal"]
+for image in remaining:
+    request=urllib.request.Request(path, data=json.dumps({"eliminar":image["id"]}).encode(), headers=headers, method="PATCH")
+    with urllib.request.urlopen(request) as response:
+        assert json.load(response)["imagenes"]==[]
+print("d03-gallery-cover-fallback-and-delete-ok")
+PYCODE
+
 python3 - "$state_file" "$media_dir" <<'PY'
 import json
 import sys
@@ -170,7 +218,7 @@ from pathlib import Path
 
 state=json.loads(Path(sys.argv[1]).read_text())
 root=Path(sys.argv[2])
-for key in state["product_keys"] + state["attachment_keys"]:
+for key in state["product_keys"] + state["attachment_host_keys"]:
     assert not (root / key).exists(), key
 print("d03-delete-no-orphans-ok")
 PY
